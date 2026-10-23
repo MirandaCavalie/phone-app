@@ -6,7 +6,7 @@ struct MatchesView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 14) {
+                VStack(spacing: 14) {
                     if model.matchSummaries.isEmpty {
                         ContentUnavailableView {
                             Label("Todavía no hay matches", systemImage: "arrow.left.arrow.right")
