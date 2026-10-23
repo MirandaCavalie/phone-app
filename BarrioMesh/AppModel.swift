@@ -40,8 +40,9 @@ final class AppModel: ObservableObject {
             deviceID = created
         }
 
-        displayName = defaults.string(forKey: Self.displayNameKey)
+        let resolvedDisplayName = defaults.string(forKey: Self.displayNameKey)
             ?? UIDevice.current.name.replacingOccurrences(of: "’s iPhone", with: "")
+        displayName = resolvedDisplayName
 
         let stateURL = Self.applicationSupportURL.appendingPathComponent("mesh-state.json")
         store = MeshStore(fileURL: stateURL)
@@ -53,7 +54,7 @@ final class AppModel: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
 
         let suffix = String(deviceID.prefix(4))
-        peerSession = PeerSession(displayName: "\(displayName)-\(suffix)")
+        peerSession = PeerSession(displayName: "\(resolvedDisplayName)-\(suffix)")
         peerSession.onData = { [weak self] data in
             Task { @MainActor in self?.receive(data) }
         }

@@ -2,7 +2,10 @@ import Foundation
 import Combine
 @preconcurrency import MultipeerConnectivity
 
-final class PeerSession: NSObject, ObservableObject {
+// Multipeer Connectivity invokes its Objective-C delegate callbacks on a private
+// queue. Every mutation owned by this wrapper is immediately marshalled onto the
+// main queue, so the wrapper can safely cross that callback boundary.
+final class PeerSession: NSObject, ObservableObject, @unchecked Sendable {
     enum SendError: Error {
         case noConnectedPeers
     }
