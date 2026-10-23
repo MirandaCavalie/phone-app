@@ -1,0 +1,314 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000001 /* BarrioMeshApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* BarrioMeshApp.swift */; };
+		100000000000000000000002 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* AppModel.swift */; };
+		100000000000000000000003 /* PeerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* PeerSession.swift */; };
+		100000000000000000000004 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* ContentView.swift */; };
+		100000000000000000000005 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* BoardView.swift */; };
+		100000000000000000000006 /* PostComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* PostComposerView.swift */; };
+		100000000000000000000007 /* MatchesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* MatchesView.swift */; };
+		100000000000000000000008 /* NetworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* NetworkView.swift */; };
+		100000000000000000000009 /* ResourceKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* ResourceKind.swift */; };
+		10000000000000000000000A /* MeshModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* MeshModels.swift */; };
+		10000000000000000000000B /* MatchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* MatchEngine.swift */; };
+		10000000000000000000000C /* MeshStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* MeshStore.swift */; };
+		10000000000000000000000D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		200000000000000000000001 /* BarrioMeshApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarrioMeshApp.swift; sourceTree = "<group>"; };
+		200000000000000000000002 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		200000000000000000000003 /* PeerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerSession.swift; sourceTree = "<group>"; };
+		200000000000000000000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		200000000000000000000005 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		200000000000000000000006 /* PostComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostComposerView.swift; sourceTree = "<group>"; };
+		200000000000000000000007 /* MatchesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchesView.swift; sourceTree = "<group>"; };
+		200000000000000000000008 /* NetworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkView.swift; sourceTree = "<group>"; };
+		200000000000000000000009 /* ResourceKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceKind.swift; sourceTree = "<group>"; };
+		20000000000000000000000A /* MeshModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshModels.swift; sourceTree = "<group>"; };
+		20000000000000000000000B /* MatchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchEngine.swift; sourceTree = "<group>"; };
+		20000000000000000000000C /* MeshStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshStore.swift; sourceTree = "<group>"; };
+		20000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		20000000000000000000000F /* BarrioMesh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BarrioMesh.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000010 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
+		200000000000000000000011 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		200000000000000000000012 /* SOP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SOP.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		300000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		400000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000002 /* BarrioMesh */,
+				400000000000000000000006 /* BarrioMeshCore */,
+				200000000000000000000010 /* Package.swift */,
+				200000000000000000000011 /* README.md */,
+				200000000000000000000012 /* SOP.md */,
+				400000000000000000000007 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		400000000000000000000002 /* BarrioMesh */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000001 /* BarrioMeshApp.swift */,
+				200000000000000000000002 /* AppModel.swift */,
+				400000000000000000000003 /* Networking */,
+				400000000000000000000004 /* Views */,
+				400000000000000000000005 /* Resources */,
+			);
+			path = BarrioMesh;
+			sourceTree = "<group>";
+		};
+		400000000000000000000003 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000003 /* PeerSession.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		400000000000000000000004 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000004 /* ContentView.swift */,
+				200000000000000000000005 /* BoardView.swift */,
+				200000000000000000000006 /* PostComposerView.swift */,
+				200000000000000000000007 /* MatchesView.swift */,
+				200000000000000000000008 /* NetworkView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		400000000000000000000005 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000D /* Assets.xcassets */,
+				20000000000000000000000E /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		400000000000000000000006 /* BarrioMeshCore */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000009 /* ResourceKind.swift */,
+				20000000000000000000000A /* MeshModels.swift */,
+				20000000000000000000000B /* MatchEngine.swift */,
+				20000000000000000000000C /* MeshStore.swift */,
+			);
+			path = Sources/BarrioMeshCore;
+			sourceTree = "<group>";
+		};
+		400000000000000000000007 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000F /* BarrioMesh.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		500000000000000000000001 /* BarrioMesh */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800000000000000000000002 /* Build configuration list for PBXNativeTarget "BarrioMesh" */;
+			buildPhases = (
+				600000000000000000000001 /* Sources */,
+				300000000000000000000001 /* Frameworks */,
+				600000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BarrioMesh;
+			productName = BarrioMesh;
+			productReference = 20000000000000000000000F /* BarrioMesh.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		700000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					500000000000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "BarrioMesh" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 400000000000000000000001;
+			productRefGroup = 400000000000000000000007 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				500000000000000000000001 /* BarrioMesh */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		600000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10000000000000000000000D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		600000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000001 /* BarrioMeshApp.swift in Sources */,
+				100000000000000000000002 /* AppModel.swift in Sources */,
+				100000000000000000000003 /* PeerSession.swift in Sources */,
+				100000000000000000000004 /* ContentView.swift in Sources */,
+				100000000000000000000005 /* BoardView.swift in Sources */,
+				100000000000000000000006 /* PostComposerView.swift in Sources */,
+				100000000000000000000007 /* MatchesView.swift in Sources */,
+				100000000000000000000008 /* NetworkView.swift in Sources */,
+				100000000000000000000009 /* ResourceKind.swift in Sources */,
+				10000000000000000000000A /* MeshModels.swift in Sources */,
+				10000000000000000000000B /* MatchEngine.swift in Sources */,
+				10000000000000000000000C /* MeshStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		900000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		900000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		900000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BarrioMesh/Resources/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mirandacavalie.barriomesh;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		900000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BarrioMesh/Resources/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mirandacavalie.barriomesh;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		800000000000000000000001 /* Build configuration list for PBXProject "BarrioMesh" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000001 /* Debug */,
+				900000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		800000000000000000000002 /* Build configuration list for PBXNativeTarget "BarrioMesh" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000003 /* Debug */,
+				900000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 700000000000000000000001 /* Project object */;
+}
