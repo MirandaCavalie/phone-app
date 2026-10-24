@@ -11,6 +11,8 @@ struct ProfileView: View {
                     LanguagePicker()
                 }
 
+                OnlineBrainSection()
+
                 Section(t("Tú", "You")) {
                     TextField(t("Nombre", "Name"), text: $model.profile.name)
                     Picker(t("País", "Country"), selection: $model.profile.country) {
@@ -120,5 +122,35 @@ struct ProfileView: View {
         }
         .toggleStyle(.button)
         .buttonStyle(.bordered)
+    }
+}
+
+/// Where the person turns on the online brain by pasting their own Anthropic key.
+private struct OnlineBrainSection: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var key = ""
+
+    var body: some View {
+        Section {
+            if model.hasCloudKey {
+                Label(t("Claude conectado", "Claude connected"), systemImage: "checkmark.seal.fill")
+                    .foregroundStyle(FaroTheme.safe)
+                Button(t("Quitar la clave", "Remove key"), role: .destructive) { model.clearCloudKey() }
+            } else {
+                SecureField("sk-ant-…", text: $key)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button(t("Guardar en el Keychain", "Save to Keychain")) {
+                    model.saveCloudKey(key)
+                    key = ""
+                }
+                .disabled(!key.hasPrefix("sk-ant-"))
+            }
+        } header: {
+            Text(t("Cerebro con internet", "Online brain"))
+        } footer: {
+            Text(t("Con internet, Faro razona con Claude, busca en la web y te propone acciones. Sin internet, sigue en el teléfono y por Bluetooth. La clave solo se guarda en este iPhone.",
+                   "Online, Faro reasons with Claude, searches the web and proposes actions. Offline, it keeps working on the phone and over Bluetooth. The key stays on this iPhone."))
+        }
     }
 }

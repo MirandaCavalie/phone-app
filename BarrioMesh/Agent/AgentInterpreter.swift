@@ -7,11 +7,13 @@ import FoundationModels
 enum AgentEngine: Sendable {
     case appleIntelligence
     case localRules
+    case claude
 
     var displayName: String {
         switch self {
         case .appleIntelligence: t("Apple Intelligence en el teléfono", "On-device Apple Intelligence")
         case .localRules: t("Motor local", "Local engine")
+        case .claude: t("Claude · con internet", "Claude · online")
         }
     }
 }

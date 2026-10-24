@@ -12,12 +12,17 @@ struct AskFaroView: View {
         let text: String
         var draft: AgentDraft?
         var engine: AgentEngine?
+        var actions: [ProposedAction] = []
+        var searched = false
     }
 
     @State private var turns: [Turn] = []
     @State private var message = ""
     @State private var isThinking = false
     @State private var composing: AgentDraft?
+    @State private var resolved: [UUID: String] = [:]
+    @State private var orderToReview: SupplyOrder?
+    @Environment(\.openURL) private var openURL
     @StateObject private var listener = SpeechListener()
 
     var body: some View {
@@ -51,6 +56,9 @@ struct AskFaroView: View {
             .sheet(item: $composing) { draft in
                 PostComposerView(kind: draft.kind, initialDraft: draft)
             }
+            .sheet(item: Binding(get: { orderToReview.map(IdentifiedOrder.init) }, set: { orderToReview = $0?.order })) { wrapper in
+                SupplyOrderView(order: wrapper.order)
+            }
         }
     }
 
@@ -58,10 +66,14 @@ struct AskFaroView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 FaroMark(size: 40)
-                Text("Pregúntame por tu familia, tus encuentros o tu kit. También puedes pedir u ofrecer ayuda. Mantén presionado el micrófono para hablarme.")
+                Text(t("Pregúntame o pídeme algo: tu familia, alertas, la mochila, tu agenda. Mantén presionado el micrófono para hablarme.",
+                       "Ask me anything or ask me to do it: family, alerts, go-bag, your calendar. Hold the mic to talk."))
                     .font(.subheadline)
             }
-            Label(t("Todo se procesa en este iPhone. Sin internet, sin API.", "Runs on this iPhone. No internet, no API."), systemImage: "lock.iphone")
+            Label(model.onlineBrainReady
+                  ? t("Con internet: Claude con búsqueda web. Sin internet: este iPhone y Bluetooth.", "Online: Claude with web search. Offline: this iPhone and Bluetooth.")
+                  : t("Sin internet: funciono en este iPhone y por Bluetooth.", "Offline: running on this iPhone and over Bluetooth."),
+                  systemImage: model.onlineBrainReady ? "cloud.fill" : "lock.iphone")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -112,8 +124,11 @@ struct AskFaroView: View {
                     Button(t("Revisar y publicar", "Review and post")) { composing = draft }
                         .buttonStyle(.borderedProminent)
                 }
+                ForEach(turn.actions) { action in
+                    actionCard(action)
+                }
                 if let engine = turn.engine {
-                    Text(engine.displayName)
+                    Text(turn.searched ? "\(engine.displayName) · \(t("buscó en la web", "searched the web"))" : engine.displayName)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -190,7 +205,22 @@ struct AskFaroView: View {
 
         Task {
             defer { isThinking = false }
-            if Self.looksLikeRequest(cleaned) {
+            if model.onlineBrainReady {
+                do {
+                    let reply = try await model.onlineBrain.ask(cleaned, model: model)
+                    turns.append(Turn(fromUser: false, text: reply.text, engine: .claude, actions: reply.actions, searched: reply.searched))
+                    if spoken || model.memory.emergencyActive, model.speaksUpdates {
+                        model.narrator.speak(reply.text, country: model.profile.country)
+                    }
+                    return
+                } catch {
+                    turns.append(Turn(fromUser: false, text: t("Sin conexión con Claude (\(error.localizedDescription)). Sigo en el teléfono.", "Couldn't reach Claude (\(error.localizedDescription)). Continuing on the phone.")))
+                }
+            }
+            if let note = trustedNoteIntent(cleaned) {
+                turns.append(Turn(fromUser: false, text: t("Puedo mandarlo cifrado por Bluetooth, sin internet.", "I can send it encrypted over Bluetooth, no internet needed."),
+                                  engine: .localRules, actions: [note]))
+            } else if Self.looksLikeRequest(cleaned) {
                 let result = await PersonalAgentInterpreter.interpret(cleaned, emergencyNumber: model.profile.country.emergencyNumber)
                 var draft = result.draft
                 if draft.area.isEmpty { draft.area = model.profile.homeArea }
@@ -204,6 +234,47 @@ struct AskFaroView: View {
                 }
             }
         }
+    }
+
+    /// "Mensaje a Juan: estoy bien" / "Message Juan: I'm OK" → an offline note to a trusted person.
+    private func trustedNoteIntent(_ text: String) -> ProposedAction? {
+        let pattern = #"(?i)^\s*(?:mensaje|mensajea|dile|escribe|message|tell|text)\s+(?:a\s+|to\s+)?([^:,]+?)\s*[:,]\s*(.+)$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let nameRange = Range(match.range(at: 1), in: text),
+              let bodyRange = Range(match.range(at: 2), in: text) else { return nil }
+        let name = String(text[nameRange])
+        guard let person = model.memory.activeTrusted.first(where: { $0.name.localizedCaseInsensitiveContains(name) || name.localizedCaseInsensitiveContains($0.name) }) else { return nil }
+        let body = String(text[bodyRange])
+        return ProposedAction(kind: .note(agentID: person.agentID, name: person.name, text: body), title: t("Mensaje a \(person.name)", "Message \(person.name)"), detail: body)
+    }
+
+    private func actionCard(_ action: ProposedAction) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(action.title).font(.subheadline.weight(.semibold))
+            if !action.detail.isEmpty {
+                Text(action.detail).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+            }
+            if let outcome = resolved[action.id] {
+                Label(outcome, systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(FaroTheme.safe)
+            } else {
+                HStack {
+                    Button(t("Confirmar", "Confirm")) {
+                        if action.kind == .order {
+                            orderToReview = SupplyOrder(gaps: GoBag.audit(model.profile.goBag, for: model.profile, now: Date()))
+                        }
+                        Task { resolved[action.id] = await model.execute(action) { openURL($0) } }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button(t("No", "No")) { resolved[action.id] = t("Cancelado.", "Cancelled.") }
+                        .buttonStyle(.bordered)
+                }
+                .controlSize(.small)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FaroTheme.beam.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
     }
 
     /// Needs and offers become drafts; everything else is a question for the agent.
