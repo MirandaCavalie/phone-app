@@ -14,6 +14,18 @@ struct PostComposerView: View {
     @State private var note = ""
     @State private var expiryHours = 4
 
+    init(kind: PostKind, initialDraft: AgentDraft? = nil) {
+        self.kind = kind
+        let initialResource = initialDraft?.resource ?? .water
+        _resource = State(initialValue: initialResource)
+        _quantity = State(initialValue: initialDraft?.quantity ?? 1)
+        _unit = State(initialValue: initialDraft?.unit ?? initialResource.defaultUnit)
+        _urgency = State(initialValue: initialDraft?.urgency ?? .normal)
+        _area = State(initialValue: initialDraft?.area ?? "")
+        _note = State(initialValue: initialDraft?.note ?? "")
+        _expiryHours = State(initialValue: initialDraft?.urgency == .urgent ? 1 : 4)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
