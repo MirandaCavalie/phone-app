@@ -32,7 +32,7 @@ public enum Paperwork {
 
     // MARK: Call
 
-    public static func callScript(profile: AgentProfile, state: MeshState, selfID: String, now: Date) -> CallScript {
+    public static func callScript(profile: AgentProfile, state: MeshState, selfID: String, now: Date, calendar: Calendar = .current) -> CallScript {
         var lines = [t("Hola, mi nombre es \(profile.name).", "Hello, my name is \(profile.name).")]
         lines.append(t("Estoy en la zona de \(profile.homeArea), \(profile.country.displayName).", "I am in the \(profile.homeArea) area, \(profile.country.displayName)."))
         if profile.meetingPoint.isEmpty == false {
@@ -51,7 +51,7 @@ public enum Paperwork {
             }
         }
         for member in profile.household where !member.livesWithUser || !member.routine.isEmpty {
-            let location = FamilyLocator.likelyLocation(of: member, at: now, homeArea: profile.homeArea)
+            let location = FamilyLocator.likelyLocation(of: member, at: now, homeArea: profile.homeArea, calendar: calendar)
             if location.place != t("Casa", "Home") {
                 lines.append(t("\(member.name) probablemente está en \(location.description).", "\(member.name) is probably at \(location.description)."))
             }
@@ -67,7 +67,7 @@ public enum Paperwork {
 
     // MARK: Report
 
-    public static func report(profile: AgentProfile, memory: AgentMemory, state: MeshState, selfID: String, now: Date) -> Report {
+    public static func report(profile: AgentProfile, memory: AgentMemory, state: MeshState, selfID: String, now: Date, calendar: Calendar = .current) -> Report {
         var sections: [Report.Section] = []
 
         sections.append(.init(title: t("Persona que reporta", "Reported by"), rows: [
@@ -93,7 +93,7 @@ public enum Paperwork {
             sections.append(.init(title: t("Fichas médicas", "Medical cards"), rows: cards))
         }
         let whereabouts = profile.household.filter { !$0.livesWithUser || !$0.routine.isEmpty }.map { member -> String in
-            let location = FamilyLocator.likelyLocation(of: member, at: memory.emergencyStartedAt ?? now, homeArea: profile.homeArea)
+            let location = FamilyLocator.likelyLocation(of: member, at: memory.emergencyStartedAt ?? now, homeArea: profile.homeArea, calendar: calendar)
             return "\(member.name): \(location.description) — \(location.reason)"
         }
         if !whereabouts.isEmpty {
