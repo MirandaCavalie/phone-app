@@ -127,8 +127,11 @@ struct OnboardingView: View {
         case .family:
             VStack(alignment: .leading, spacing: 16) {
                 title("Tu círculo familiar", "Escriban el mismo código en sus teléfonos. Sus “estoy bien” llegarán saltando entre teléfonos cercanos.")
-                field("Código de familia (ej.: casa-rodriguez)", text: $draft.familyCircleCode)
+                field("Código de familia", text: $draft.familyCircleCode)
                     .textInputAutocapitalization(.never)
+                Button("Generar un código seguro") { draft.familyCircleCode = FamilyCircle.suggestCode() }
+                    .font(.subheadline.weight(.semibold))
+                    .tint(FaroTheme.beam)
                 title("Alguien a quien avisar", "Cuando vuelva la señal, te dejo el mensaje listo para enviar.")
                 field("Nombre", text: $contactName)
                 field("Teléfono con código de país", text: $contactPhone)

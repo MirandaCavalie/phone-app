@@ -35,6 +35,9 @@ final class AppModel: ObservableObject {
     let peerSession: PeerSession
     let connectivity = ConnectivityMonitor()
     let seismometer = Seismometer()
+    let identity = IdentityStore.loadOrCreate()
+    /// Items from peers dropped because their signature did not check out.
+    @Published private(set) var rejectedItems = 0
 
     /// A quake felt only by this phone, waiting out its cancel window.
     struct QuakeAlert: Equatable {
@@ -50,6 +53,7 @@ final class AppModel: ObservableObject {
     private var heartbeat: Task<Void, Never>?
     private var peerUpdates: AnyCancellable?
     private var demoNeighbors: [(agent: PersonalAgent, memory: AgentMemory)] = []
+    private var demoIdentities: [String: AgentIdentity] = [:]
 
     init() {
         let defaults = UserDefaults.standard
@@ -245,12 +249,14 @@ final class AppModel: ObservableObject {
     // MARK: - Family
 
     var familyCheckIns: [SafetyCheckIn] {
-        guard let circle = profile.familyCircleID else { return [] }
-        return meshState.latestCheckIns(circleID: circle).filter { $0.authorID != deviceID }
+        meshState.latestCheckIns(circleCode: profile.familyCircleCode).filter { $0.authorID != deviceID }
     }
 
     var myLatestCheckIn: SafetyCheckIn? {
-        meshState.checkIns.filter { $0.authorID == deviceID }.max(by: { $0.createdAt < $1.createdAt })
+        meshState.checkIns
+            .filter { $0.authorID == deviceID }
+            .max(by: { $0.createdAt < $1.createdAt })?
+            .opened(withCircleCode: profile.familyCircleCode)
     }
 
     // MARK: - Mesh
@@ -346,6 +352,7 @@ final class AppModel: ObservableObject {
         meshState = store.state
         memory = AgentMemory()
         demoNeighbors = []
+        demoIdentities = [:]
         save(memory, to: Self.memoryURL)
         broadcastState()
     }
@@ -387,6 +394,7 @@ final class AppModel: ObservableObject {
         let relative = PersonalAgent(selfID: "demo-family", profile: family, policy: AgentPolicy())
 
         let now = Date()
+        demoIdentities = [luis.selfID: AgentIdentity(), relative.selfID: AgentIdentity()]
         demoNeighbors = [luis, relative].map { agent in
             var memory = agent.activateEmergency(memory: AgentMemory(), reason: "Simulación", now: now)
             // Simulated agents are not persisted; remember what they already published in an earlier run.
@@ -432,7 +440,10 @@ final class AppModel: ObservableObject {
                 alertMessage = "Un teléfono cercano usa una versión incompatible de Faro."
                 return
             }
-            if store.merge(message.state) {
+            // Only correctly signed items, from the key first seen for each author, get in.
+            let verdict = MeshSecurity.verify(message.state, known: store.state)
+            rejectedItems += verdict.rejected
+            if store.merge(verdict.accepted) {
                 meshState = store.state
                 lastSyncAt = Date()
                 // Gossip only converges when newly learned state is relayed onward.
@@ -445,8 +456,18 @@ final class AppModel: ObservableObject {
     }
 
     private func publishChange() {
+        signLocalItems()
         meshState = store.state
         broadcastState()
+    }
+
+    /// Signs whatever this phone (or a simulated neighbor on it) authored and has not signed yet.
+    private func signLocalItems() {
+        var signatures = MeshSecurity.sign(store.state, authorID: deviceID, with: identity)
+        for (author, demoIdentity) in demoIdentities {
+            signatures += MeshSecurity.sign(store.state, authorID: author, with: demoIdentity)
+        }
+        if !signatures.isEmpty { store.add(signatures) }
     }
 
     private func broadcastState() {

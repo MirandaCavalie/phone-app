@@ -38,6 +38,8 @@
 		100000000000000000000022 /* SeismicDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* SeismicDetector.swift */; };
 		100000000000000000000023 /* Seismometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* Seismometer.swift */; };
 		100000000000000000000024 /* QuakeAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* QuakeAlertView.swift */; };
+		100000000000000000000025 /* MeshSecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* MeshSecurity.swift */; };
+		100000000000000000000026 /* IdentityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* IdentityStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,6 +79,8 @@
 		200000000000000000000022 /* SeismicDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeismicDetector.swift; sourceTree = "<group>"; };
 		200000000000000000000023 /* Seismometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Seismometer.swift; sourceTree = "<group>"; };
 		200000000000000000000024 /* QuakeAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuakeAlertView.swift; sourceTree = "<group>"; };
+		200000000000000000000025 /* MeshSecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshSecurity.swift; sourceTree = "<group>"; };
+		200000000000000000000026 /* IdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +159,7 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000025 /* MeshSecurity.swift */,
 				200000000000000000000022 /* SeismicDetector.swift */,
 				200000000000000000000019 /* ProfileInterpreter.swift */,
 				200000000000000000000018 /* PersonalAgent.swift */,
@@ -180,6 +185,7 @@
 		400000000000000000000008 /* Agent */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000026 /* IdentityStore.swift */,
 				200000000000000000000023 /* Seismometer.swift */,
 				200000000000000000000014 /* AgentInterpreter.swift */,
 				20000000000000000000001A /* AgentBrain.swift */,
@@ -280,6 +286,8 @@
 				100000000000000000000013 /* OfflineAgent.swift in Sources */,
 				100000000000000000000014 /* AgentInterpreter.swift in Sources */,
 				100000000000000000000015 /* AskFaroView.swift in Sources */,
+				100000000000000000000026 /* IdentityStore.swift in Sources */,
+				100000000000000000000025 /* MeshSecurity.swift in Sources */,
 				100000000000000000000024 /* QuakeAlertView.swift in Sources */,
 				100000000000000000000023 /* Seismometer.swift in Sources */,
 				100000000000000000000022 /* SeismicDetector.swift in Sources */,
