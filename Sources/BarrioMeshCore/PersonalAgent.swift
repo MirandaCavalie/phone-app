@@ -235,6 +235,7 @@ public struct PersonalAgent: Sendable {
         var result = AgentStepResult(memory: memory)
 
         observeConnectivity(connectivity, result: &result, now: now)
+        observeSeismicReports(state.seismicReports, result: &result, now: now)
 
         if result.memory.emergencyActive {
             checkIn(result: &result, now: now)
@@ -329,6 +330,44 @@ public struct PersonalAgent: Sendable {
                 ))
             }
         }
+    }
+
+    // MARK: - Earthquakes
+
+    public enum SeismicDecision: Equatable, Sendable {
+        case ignore
+        /// Only this phone felt it: give the person a moment to cancel a false alarm.
+        case countdown(seconds: Int)
+        /// Several phones felt it: act immediately.
+        case activateNow(phones: Int)
+    }
+
+    public static let seismicCountdown = 15
+
+    /// What to do when this phone's accelerometer reports shaking.
+    public func assessShaking(_ event: SeismicEvent, reports: [SeismicReport], memory: AgentMemory, now: Date) -> SeismicDecision {
+        guard policy.activateOnShaking, !memory.emergencyActive else { return .ignore }
+        let phones = SeismicCorroboration.devices(near: now, in: reports).union([selfID]).count
+        return phones >= 2 ? .activateNow(phones: phones) : .countdown(seconds: Self.seismicCountdown)
+    }
+
+    public func activateForEarthquake(_ event: SeismicEvent?, phones: Int, memory: AgentMemory, now: Date) -> AgentMemory {
+        var detail = phones >= 2
+            ? "\(phones) teléfonos cercanos sintieron el mismo movimiento."
+            : "Lo sintió este teléfono y no lo cancelaste."
+        if let event {
+            detail += " Movimiento \(event.intensity.displayName) (\(String(format: "%.2f", event.peakAcceleration)) g durante \(Int(event.duration.rounded())) s)."
+        }
+        return activateEmergency(memory: memory, reason: "Posible sismo. " + detail, now: now)
+    }
+
+    /// Neighbors' phones felt shaking: if at least two did, act even if this phone was on a table.
+    private func observeSeismicReports(_ reports: [SeismicReport], result: inout AgentStepResult, now: Date) {
+        guard policy.activateOnShaking, !result.memory.emergencyActive else { return }
+        let recent = reports.filter { now.timeIntervalSince($0.detectedAt) <= SeismicCorroboration.window && $0.detectedAt <= now.addingTimeInterval(5) }
+        let phones = SeismicCorroboration.devices(near: now, in: recent)
+        guard phones.count >= 2 else { return }
+        result.memory = activateForEarthquake(nil, phones: phones.count, memory: result.memory, now: now)
     }
 
     // MARK: - Check-in
