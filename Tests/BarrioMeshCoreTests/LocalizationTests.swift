@@ -43,3 +43,13 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(ResourceKind.water.amount(1), "1 botella de agua")
     }
 }
+
+final class EnglishRequestTests: XCTestCase {
+    func testPhoneChargesAreAPowerRequest() {
+        let draft = OfflineAgent.interpret("I need 2 phone charges in Lima")
+        XCTAssertEqual(draft.kind, .need)
+        XCTAssertEqual(draft.resource, .power)
+        XCTAssertEqual(draft.quantity, 2)
+        XCTAssertEqual(draft.area, "Lima")
+    }
+}
