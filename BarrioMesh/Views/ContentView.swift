@@ -11,6 +11,11 @@ struct ContentView: View {
                 OnboardingView()
             }
         }
+        .fullScreenCover(isPresented: quakeIsPresented) {
+            if let alert = model.quakeAlert {
+                QuakeAlertView(alert: alert)
+            }
+        }
         .alert("Aviso de la red", isPresented: alertIsPresented) {
             Button("Entendido", role: .cancel) { model.alertMessage = nil }
         } message: {
@@ -34,6 +39,13 @@ struct ContentView: View {
             ProfileView()
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
         }
+    }
+
+    private var quakeIsPresented: Binding<Bool> {
+        Binding(
+            get: { model.quakeAlert != nil },
+            set: { if !$0, model.quakeAlert != nil { model.cancelQuakeAlert() } }
+        )
     }
 
     private var alertIsPresented: Binding<Bool> {

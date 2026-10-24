@@ -138,6 +138,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 14) {
                 title("¿Qué puedo hacer solo?", "Si se cae internet, actúo dentro de estos límites y te pregunto por todo lo demás.")
                 toggle("Activar modo emergencia al perder internet", $policy.activateOnOutage)
+                toggle("Activar al sentir un sismo", $policy.activateOnShaking)
                 toggle("Avisar a mi familia que estoy bien", $policy.autoCheckIn)
                 toggle("Pedir lo que mi hogar necesita", $policy.autoPublishNeeds)
                 toggle("Ofrecer lo que nos sobra", $policy.autoPublishOffers)
