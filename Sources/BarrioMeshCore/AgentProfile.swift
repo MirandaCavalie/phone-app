@@ -16,6 +16,10 @@ public struct AgentProfile: Codable, Equatable, Sendable {
     /// Shared secret typed on every phone of the same family. Check-ins are tagged
     /// with a hash of it, so only the family recognizes each other's status.
     public var familyCircleCode: String
+    /// The emergency go-bag inventory the agent keeps an eye on.
+    public var goBag: [GoBagItem]
+    /// A neighborhood store or pharmacy the agent can prepare WhatsApp orders for.
+    public var trustedStore: FamilyContact?
 
     public init(
         name: String = "",
@@ -26,7 +30,9 @@ public struct AgentProfile: Codable, Equatable, Sendable {
         supplies: [Supply] = [],
         standingNeeds: [StandingNeed] = [],
         familyContacts: [FamilyContact] = [],
-        familyCircleCode: String = ""
+        familyCircleCode: String = "",
+        goBag: [GoBagItem] = [],
+        trustedStore: FamilyContact? = nil
     ) {
         self.name = name
         self.country = country
@@ -37,6 +43,24 @@ public struct AgentProfile: Codable, Equatable, Sendable {
         self.standingNeeds = standingNeeds
         self.familyContacts = familyContacts
         self.familyCircleCode = familyCircleCode
+        self.goBag = goBag
+        self.trustedStore = trustedStore
+    }
+
+    public init(from decoder: Decoder) throws {
+        // Profiles saved by older builds keep loading as fields are added.
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        country = try c.decodeIfPresent(Country.self, forKey: .country) ?? .colombia
+        homeArea = try c.decodeIfPresent(String.self, forKey: .homeArea) ?? ""
+        meetingPoint = try c.decodeIfPresent(String.self, forKey: .meetingPoint) ?? ""
+        household = try c.decodeIfPresent([HouseholdMember].self, forKey: .household) ?? []
+        supplies = try c.decodeIfPresent([Supply].self, forKey: .supplies) ?? []
+        standingNeeds = try c.decodeIfPresent([StandingNeed].self, forKey: .standingNeeds) ?? []
+        familyContacts = try c.decodeIfPresent([FamilyContact].self, forKey: .familyContacts) ?? []
+        familyCircleCode = try c.decodeIfPresent(String.self, forKey: .familyCircleCode) ?? ""
+        goBag = try c.decodeIfPresent([GoBagItem].self, forKey: .goBag) ?? []
+        trustedStore = try c.decodeIfPresent(FamilyContact.self, forKey: .trustedStore)
     }
 
     public var isConfigured: Bool {
