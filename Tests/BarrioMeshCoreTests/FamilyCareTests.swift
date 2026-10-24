@@ -74,7 +74,7 @@ final class FamilyCareTests: XCTestCase {
     func testEmergencyLocatesFamilyAndPreparesAMessageForWhoeverIsAway() {
         var away = diego
         away.livesWithUser = false
-        let agent = PersonalAgent(selfID: "me", profile: AgentProfile(name: "Ana", homeArea: "Chapinero", household: [rosa, away]), policy: AgentPolicy())
+        let agent = PersonalAgent(selfID: "me", profile: AgentProfile(name: "Ana", homeArea: "Chapinero", household: [rosa, away]), policy: AgentPolicy(), calendar: calendar)
         let memory = agent.activateEmergency(memory: AgentMemory(), reason: "test", now: tuesdayMorning)
         let result = agent.step(state: MeshState(), memory: memory, connectivity: .offline, now: tuesdayMorning)
 
@@ -95,12 +95,12 @@ final class FamilyCareTests: XCTestCase {
         var away = diego
         away.livesWithUser = false
         let profile = AgentProfile(name: "Ana", homeArea: "Chapinero", household: [rosa, away])
-        let script = Paperwork.callScript(profile: profile, state: MeshState(), selfID: "me", now: tuesdayMorning)
+        let script = Paperwork.callScript(profile: profile, state: MeshState(), selfID: "me", now: tuesdayMorning, calendar: calendar)
         XCTAssertTrue(script.text.contains("Rosa: "))
         XCTAssertTrue(script.text.contains("Insulina"))
         XCTAssertTrue(script.text.contains("Somos 2 personas"), "Diego lives elsewhere")
 
-        let report = Paperwork.report(profile: profile, memory: AgentMemory(), state: MeshState(), selfID: "me", now: tuesdayMorning).plainText
+        let report = Paperwork.report(profile: profile, memory: AgentMemory(), state: MeshState(), selfID: "me", now: tuesdayMorning, calendar: calendar).plainText
         XCTAssertTrue(report.contains("FICHAS MÉDICAS"))
         XCTAssertTrue(report.contains("DÓNDE ESTABA CADA FAMILIAR"))
     }

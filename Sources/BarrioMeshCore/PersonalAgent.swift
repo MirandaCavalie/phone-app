@@ -219,10 +219,15 @@ public struct PersonalAgent: Sendable {
     public var profile: AgentProfile
     public var policy: AgentPolicy
 
-    public init(selfID: String, profile: AgentProfile, policy: AgentPolicy) {
+    /// The calendar (and time zone) routines are read in. Injected so behavior never
+    /// depends on the device's or the CI runner's time zone.
+    public var calendar: Calendar
+
+    public init(selfID: String, profile: AgentProfile, policy: AgentPolicy, calendar: Calendar = .current) {
         self.selfID = selfID
         self.profile = profile
         self.policy = policy
+        self.calendar = calendar
     }
 
     private var displayName: String {
@@ -443,7 +448,7 @@ public struct PersonalAgent: Sendable {
         result.memory.familyLocatedAt = now
 
         for member in profile.household {
-            let location = FamilyLocator.likelyLocation(of: member, at: now, homeArea: profile.homeArea)
+            let location = FamilyLocator.likelyLocation(of: member, at: now, homeArea: profile.homeArea, calendar: calendar)
             var detail = location.reason
             if !location.meetingPoint.isEmpty { detail += t(" · punto de encuentro: \(location.meetingPoint)", " · meeting point: \(location.meetingPoint)") }
             if !member.medical.isEmpty { detail += " · " + member.medical.summary }
