@@ -56,7 +56,7 @@ Decisiones concretas:
 8. Abrir **Trámites listos**: el guion para llamar al 123 y el PDF del reporte de afectación.
 9. Quitar el modo avión. En **Familia**, los mensajes preparados se abren por SMS o WhatsApp para que la persona los envíe.
 
-**Con un solo teléfono:** abrir **Perfil → Simular vecinos cercanos**, o lanzar la app con el argumento `-faro-demo`. Aparecen "Luis (simulado)" con suministros y un familiar simulado en tu círculo; todo queda marcado como simulado y el radar lo indica con un asterisco. Para ensayar la alerta de sismo, usar `-faro-quake` o **Perfil → Simular sismo**.
+**Con un solo teléfono:** abrir **Perfil → Simular vecinos cercanos**, o lanzar la app con el argumento `-faro-demo`. Aparecen "Luis (simulado)" con suministros y un familiar simulado en tu círculo; todo queda marcado como simulado y el radar lo indica con un asterisco. Para ensayar la alerta de sismo, usar `-faro-quake` o **Perfil → Simular sismo**. Para la alerta oficial, usar `-faro-alert` o **Perfil → Simular alerta oficial (USGS)**.
 
 ## Entradas y salidas
 
@@ -66,6 +66,7 @@ Decisiones concretas:
   - Estado JSON (`MeshWireMessage` v4) recibido de iPhones cercanos por MultipeerConnectivity. Solo se acepta lo que viene firmado con la clave de su autor.
   - El estado de conectividad del sistema (`NWPathMonitor`).
   - El acelerómetro a 50 Hz (CoreMotion).
+  - Mientras hay internet, el feed público del USGS (sin key), consultado cada minuto. Las alertas relevantes se retransmiten firmadas por Bluetooth a los teléfonos sin señal.
   - La voz, reconocida dentro del dispositivo cuando el iPhone lo soporta.
 - **Salida:**
   - Publicaciones, propuestas, mensajes de negociación y check-ins sincronizados entre teléfonos.
@@ -87,6 +88,7 @@ Decisiones concretas:
 - Una persona dependiente sin reserva (por ejemplo, la mamá con insulina) genera un pedido urgente. Si es medicina, siempre requiere aprobación.
 - Los check-ins van cifrados con ChaCha20-Poly1305, con una clave derivada del código de familia. Los teléfonos que los retransmiten no pueden leerlos. Un código corto se puede adivinar por fuerza bruta; por eso la app sugiere códigos de cuatro partes.
 - Todo va firmado con Ed25519 y el ID del agente se deriva de su clave pública. Lo que llega sin firma, alterado o en nombre de otro se descarta, y en **Red local** se muestra cuántos elementos se rechazaron.
+- Alertas oficiales: un sismo M6.5+ a menos de la mitad de su radio típico de percepción, o un tsunami con M7+ a menos de 1000 km, activa el modo emergencia (si el permiso está encendido). Si es moderado, aparece un aviso y una notificación. Lo lejano o con más de 6 horas se ignora. Si varios teléfonos retransmiten el mismo evento, se guarda una sola vez. La ubicación se aproxima por barrio o ciudad (nunca GPS); si el barrio no se reconoce, se usa la capital del país, así que conviene escribir la ciudad.
 - Un sismo que siente un solo teléfono abre una cuenta regresiva de 15 segundos que se puede cancelar. Dos o más teléfonos dentro de 45 segundos activan el modo emergencia de inmediato, incluso en los teléfonos que estaban quietos. Un golpe o un paso no lo disparan; sacudir el teléfono en la mano sí, y eso es lo que se usa en el demo.
 - Si un vecino no responde en 8 minutos, el agente retira la propuesta y busca a otro. Si consigue solo una parte, sigue buscando el resto. Cuando varios piden lo mismo, atiende primero lo urgente.
 - El estado se compacta: lo vencido hace más de 12 horas se olvida, y un teléfono que no compactó no lo puede resucitar.
@@ -120,6 +122,7 @@ Además, el agente no diagnostica, no recomienda dosis, no comparte direcciones 
 ## Mantenimiento
 
 Revisar cuando cambien:
+- el formato del feed GeoJSON del USGS (`FARO_LIVE=1 swift test --filter testLiveUSGSFeedParses` lo verifica)
 - iOS
 - Foundation Models (la API de `Tool` y `@Generable` ya cambió entre versiones)
 - los permisos de Bluetooth y Red local

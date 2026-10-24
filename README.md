@@ -4,15 +4,16 @@
 
 Faro gets to know your household while things are calm: who lives with you, who depends on medicine or electricity, what you have stored, and who to tell. When the ground shakes or the network drops, it acts on your behalf, **entirely on the phone and over Bluetooth, with no servers, no accounts and no API keys**:
 
-1. **Feels the earthquake.** An STA/LTA seismic trigger runs on the accelerometer, and nearby phones corroborate each other over Bluetooth.
-2. **Tells your family you're OK.** An end-to-end encrypted check-in hops phone to phone until it reaches your family circle.
-3. **Asks for what your household needs,** starting with the most vulnerable (for example, insulin for your mom).
-4. **Offers what you can spare,** never touching the reserve you set.
-5. **Negotiates with your neighbors' agents** (propose → counter → accept) on quantity, a public meeting point and a time. Urgent requests are served first and nobody is over-promised.
-6. **Follows up** after the meeting time to close the loop.
-7. **Handles the calls and the forms:** a 123/911 call script that names who is vulnerable, and a pre-filled damage and needs report exported as PDF.
-8. **Talks and listens,** with on-device speech recognition and spoken updates.
-9. **Leaves SMS/WhatsApp messages ready** for when signal returns. You tap send.
+1. **Hears official alerts first.** While there is internet it watches the USGS real-time feed. A dangerous quake or tsunami near home starts emergency mode **before the network collapses**, and the phone relays the alert over Bluetooth to neighbors who already lost signal.
+2. **Feels the earthquake.** An STA/LTA seismic trigger runs on the accelerometer, and nearby phones corroborate each other over Bluetooth.
+3. **Tells your family you're OK.** An end-to-end encrypted check-in hops phone to phone until it reaches your family circle.
+4. **Asks for what your household needs,** starting with the most vulnerable (for example, insulin for your mom).
+5. **Offers what you can spare,** never touching the reserve you set.
+6. **Negotiates with your neighbors' agents** (propose → counter → accept) on quantity, a public meeting point and a time. Urgent requests are served first and nobody is over-promised.
+7. **Follows up** after the meeting time to close the loop.
+8. **Handles the calls and the forms:** a 123/911 call script that names who is vulnerable, and a pre-filled damage and needs report exported as PDF.
+9. **Talks and listens,** with on-device speech recognition and spoken updates.
+10. **Leaves SMS/WhatsApp messages ready** for when signal returns. You tap send.
 
 Anything outside the permissions you set ahead of time becomes a question in **"Faro necesita tu OK"**. Medicine and first aid always need a human.
 
@@ -21,7 +22,8 @@ Anything outside the permissions you set ahead of time becomes a question in **"
 ## Architecture
 
 ```text
-  Accelerometer ─► SeismicDetector (STA/LTA) ─┐      NWPathMonitor (outage)
+  USGS feed (online) ─► HazardAssessment ──────┐
+  Accelerometer ─► SeismicDetector (STA/LTA) ─┤      NWPathMonitor (outage)
                                                ▼              │
    AgentProfile ──► PersonalAgent.step()  ◄────┴──────────────┘ ◄── 20 s heartbeat (follow-ups)
    AgentPolicy        deterministic, auditable decision loop
@@ -30,8 +32,8 @@ Anything outside the permissions you set ahead of time becomes a question in **"
            ("Lo que hizo     (human OK)    (SMS/WA)   (call script, PDF report)
              Faro", spoken)
                       │
-   MeshState v4 ── posts · proposals · AgentMessage (negotiation) · SafetyCheckIn (sealed)
-                   · SeismicReport · ItemSignature
+   MeshState v5 ── posts · proposals · AgentMessage (negotiation) · SafetyCheckIn (sealed)
+                   · SeismicReport · HazardAlert (relayed official alerts) · ItemSignature
                       │  grow-only sets merged by union, compacted → converges without a server
                       ▼
    MeshSecurity: Ed25519 signatures, key-derived agent ids, ChaCha20-Poly1305 family seal
@@ -97,6 +99,7 @@ It now runs in CI.
 swift test                     # 50 tests: agent, negotiation, robustness, security, seismic, paperwork, simulation
 swift run CoreChecks
 swift run -c release FaroSim
+FARO_LIVE=1 swift test --filter testLiveUSGSFeedParses   # optional: parses the real USGS feed
 ```
 
 Then open `BarrioMesh.xcodeproj` (the target keeps its technical name; the app displays as **Faro**), pick your Personal Team, and run it on two iPhones with iOS 17+. See [SOP.md](SOP.md) for the full two-phone demo.
@@ -104,6 +107,7 @@ Then open `BarrioMesh.xcodeproj` (the target keeps its technical name; the app d
 **Rehearsal shortcuts:**
 - `-faro-demo` starts simulated neighbors.
 - `-faro-quake` plays the earthquake alert.
+- `-faro-alert` plays an official USGS alert near home.
 - `-faro-tab N` opens a tab and `-faro-sheet paperwork|chat` opens a sheet.
 - In the app: **Perfil → Simular sismo / Simular vecinos cercanos / Simular corte de internet**.
 
@@ -111,6 +115,7 @@ Then open `BarrioMesh.xcodeproj` (the target keeps its technical name; the app d
 
 - **Foreground only:** iOS suspends peer discovery in the background.
 - **Range grows with phone density:** isolated households with nobody in Bluetooth range cannot be helped. The simulator measures exactly this.
+- **Official alerts need internet on at least one nearby phone** and are only fetched while the app is open. The USGS feed lags the shaking by a few minutes, so it confirms and relays rather than gives early warning, and it is not a substitute for national systems such as SASMEX in Mexico. Tsunami advice is conservative because the app does not know whether you are on the coast.
 - **Shaking detection is a "posible sismo",** not an official alert. One phone alone triggers a cancellable countdown; two or more corroborate.
 - **No medical triage or emergency dispatch.** Faro complements 123/911 and never replaces them.
 - **Speech and Apple Intelligence** depend on device support; the local engine keeps every flow working without them.

@@ -23,6 +23,7 @@ Hecho en San Francisco para Latinoamérica: México 2017, Ecuador 2016… En cad
 | Tiempo | Qué se ve | Qué se dice |
 |---|---|---|
 | 0:00 | Teléfono A en la mano, pantalla "Todo tranquilo", puntaje de preparación | "Esto es Faro. Hoy me conoce: sabe que vivo con mi mamá, que ella depende de insulina y que no tengo agua guardada. Me dice qué me falta para estar preparada." |
+| 0:15 | (Opcional) **Perfil → Simular alerta oficial** en un teléfono | "Mientras hay internet, Faro escucha al USGS. Si hay un sismo fuerte o un tsunami cerca, se activa **antes** de que se caiga la red, y el teléfono que tiene señal se lo pasa por Bluetooth a los vecinos que ya no la tienen." |
 | 0:20 | **Sacudir los dos teléfonos** | "Ahora imaginen que tiembla." |
 | 0:25 | Alerta "¿Está temblando?". Como **dos teléfonos lo sintieron**, Faro se activa sin esperar la cuenta regresiva | "El acelerómetro detecta el sismo con el mismo algoritmo que usan los sismógrafos, STA/LTA. Y como el teléfono de Luis también lo sintió, se confirman entre ellos por Bluetooth y el agente arranca solo." |
 | 0:40 | Inicio en modo emergencia, **radar** con Luis y la familia, registro "Lo que hizo Faro" | "Sin que yo toque nada: avisó a mi familia que estoy bien, pidió agua por mí y le propuso un encuentro al **agente** de Luis." |
