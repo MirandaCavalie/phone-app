@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var model: AppModel
+    @State private var tab = LaunchOptions.tab
 
     var body: some View {
         Group {
@@ -24,20 +25,24 @@ struct ContentView: View {
     }
 
     private var tabs: some View {
-        TabView {
+        TabView(selection: $tab) {
             HomeView()
                 .tabItem { Label("Faro", systemImage: "light.beacon.max.fill") }
                 .badge(model.memory.pending.count)
+                .tag(0)
 
             FamilyView()
                 .tabItem { Label("Familia", systemImage: "person.2.fill") }
                 .badge(model.memory.unsentOutbox.count)
+                .tag(1)
 
             NeighborsView()
                 .tabItem { Label("Vecinos", systemImage: "house.and.flag.fill") }
+                .tag(2)
 
             ProfileView()
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
+                .tag(3)
         }
     }
 
@@ -54,4 +59,16 @@ struct ContentView: View {
             set: { if !$0 { model.alertMessage = nil } }
         )
     }
+}
+
+/// Launch arguments for rehearsals and screenshots, e.g. `-faro-tab 2` or `-faro-sheet paperwork`.
+enum LaunchOptions {
+    static func value(after flag: String) -> String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+
+    static var tab: Int { value(after: "-faro-tab").flatMap(Int.init) ?? 0 }
+    static var sheet: String? { value(after: "-faro-sheet") }
 }
