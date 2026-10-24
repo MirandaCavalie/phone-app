@@ -99,6 +99,8 @@ private struct PostCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
+                coverage
+
                 if !post.note.isEmpty {
                     Text(post.note)
                         .font(.subheadline)
@@ -124,6 +126,24 @@ private struct PostCard: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var coverage: some View {
+        let agreed = model.agreedQuantity(for: post)
+        if agreed > 0 {
+            let covered = agreed >= post.quantity
+            HStack(spacing: 8) {
+                ProgressView(value: Double(min(agreed, post.quantity)), total: Double(post.quantity))
+                    .tint(post.kind == .need ? FaroTheme.safe : .orange)
+                    .frame(maxWidth: 90)
+                Text(post.kind == .need
+                     ? (covered ? "Cubierto por acuerdo" : "\(agreed) de \(post.quantity) asegurados")
+                     : (covered ? "Todo comprometido" : "Quedan \(post.quantity - agreed)"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(post.kind == .need ? FaroTheme.safe : .orange)
+            }
+        }
     }
 }
 

@@ -256,6 +256,34 @@ final class AppModel: ObservableObject {
         narrator.narrate(memory.log, country: profile.country)
     }
 
+    // MARK: - Network picture
+
+    var simulatedNeighborCount: Int { demoNeighbors.count }
+
+    /// Everyone the agent can currently see, directly or through other phones.
+    var meshNodes: [MeshRadarView.Node] {
+        var nodes: [String: MeshRadarView.Node] = [:]
+        for post in meshState.posts where post.authorID != deviceID && post.isActive() {
+            nodes[post.authorID] = .init(id: post.authorID, name: post.authorName, kind: .relayed)
+        }
+        let connected = Set(peerSession.connectedPeerNames)
+        for name in connected {
+            let key = "peer:\(name)"
+            nodes[key] = .init(id: key, name: String(name.split(separator: "-").first ?? Substring(name)), kind: .peer)
+        }
+        for demo in demoNeighbors {
+            nodes[demo.agent.selfID] = .init(id: demo.agent.selfID, name: demo.agent.profile.name, kind: .peer)
+        }
+        for checkIn in familyCheckIns {
+            nodes[checkIn.authorID] = .init(id: checkIn.authorID, name: checkIn.authorName, kind: .family)
+        }
+        for summary in matchSummaries where summary.status == .accepted && summary.requiredPeers.contains(deviceID) {
+            let other = summary.candidate.need.authorID == deviceID ? summary.candidate.offer : summary.candidate.need
+            nodes[other.authorID] = .init(id: other.authorID, name: other.authorName, kind: .agreement)
+        }
+        return nodes.values.sorted { $0.id < $1.id }
+    }
+
     // MARK: - Paperwork
 
     var callScript: Paperwork.CallScript {
@@ -280,6 +308,14 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - Mesh
+
+    /// Units already agreed between agents for a need (received) or an offer (promised).
+    func agreedQuantity(for post: MeshPost) -> Int {
+        meshState.proposals
+            .filter { post.kind == .need ? $0.needID == post.id : $0.offerID == post.id }
+            .compactMap { meshState.negotiation(for: $0.id).agreedTerms?.quantity }
+            .reduce(0, +)
+    }
 
     var activeNeeds: [MeshPost] { activePosts.filter { $0.kind == .need } }
     var activeOffers: [MeshPost] { activePosts.filter { $0.kind == .offer } }
