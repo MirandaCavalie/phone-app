@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct BarrioMeshApp: App {
+struct FaroApp: App {
     @StateObject private var model = AppModel()
 
     var body: some Scene {

@@ -4,21 +4,13 @@ struct ContentView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        TabView {
-            AgentView()
-                .tabItem { Label("Agente", systemImage: "sparkles") }
-
-            BoardView()
-                .tabItem { Label("Barrio", systemImage: "square.grid.2x2.fill") }
-
-            MatchesView()
-                .tabItem { Label("Matches", systemImage: "arrow.left.arrow.right.circle.fill") }
-                .badge(pendingMatches)
-
-            NetworkView()
-                .tabItem { Label("Red", systemImage: "antenna.radiowaves.left.and.right") }
+        Group {
+            if model.profile.isConfigured {
+                tabs
+            } else {
+                OnboardingView()
+            }
         }
-        .tint(.indigo)
         .alert("Aviso de la red", isPresented: alertIsPresented) {
             Button("Entendido", role: .cancel) { model.alertMessage = nil }
         } message: {
@@ -26,8 +18,22 @@ struct ContentView: View {
         }
     }
 
-    private var pendingMatches: Int {
-        model.matchSummaries.filter { $0.status == .suggested || $0.status == .waiting }.count
+    private var tabs: some View {
+        TabView {
+            HomeView()
+                .tabItem { Label("Faro", systemImage: "light.beacon.max.fill") }
+                .badge(model.memory.pending.count)
+
+            FamilyView()
+                .tabItem { Label("Familia", systemImage: "person.2.fill") }
+                .badge(model.memory.unsentOutbox.count)
+
+            NeighborsView()
+                .tabItem { Label("Vecinos", systemImage: "house.and.flag.fill") }
+
+            ProfileView()
+                .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
+        }
     }
 
     private var alertIsPresented: Binding<Bool> {
