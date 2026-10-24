@@ -57,18 +57,20 @@ public final class MeshStore: @unchecked Sendable {
     }
 
     @discardableResult
-    public func merge(_ incoming: MeshState) -> Bool {
+    public func merge(_ incoming: MeshState, now: Date = Date()) -> Bool {
         lock.withLock {
             var changed = false
             var postIndex = Dictionary(uniqueKeysWithValues: storedState.posts.enumerated().map { ($1.id, $0) })
 
+            let cutoff = now.addingTimeInterval(-Self.defaultRetention)
             for post in incoming.posts {
                 if let index = postIndex[post.id] {
                     if storedState.posts[index].closedAt == nil, let incomingClosedAt = post.closedAt {
                         storedState.posts[index].closedAt = incomingClosedAt
                         changed = true
                     }
-                } else {
+                } else if !Self.isStale(post, cutoff: cutoff) {
+                    // A peer that has not compacted yet must not resurrect forgotten history.
                     storedState.posts.append(post)
                     postIndex[post.id] = storedState.posts.count - 1
                     changed = true
@@ -142,6 +144,47 @@ public final class MeshStore: @unchecked Sendable {
             if changed { persistLocked() }
             return changed
         }
+    }
+
+    /// Forgets history nobody can act on anymore, so gossip payloads stay small:
+    /// posts that expired or closed more than `retention` ago, the proposals and
+    /// negotiation messages about them, and check-ins superseded or older than two days.
+    @discardableResult
+    public func compact(now: Date = Date(), retention: TimeInterval = MeshStore.defaultRetention) -> Bool {
+        lock.withLock {
+            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count)
+            storedState = Self.compacted(storedState, now: now, retention: retention)
+            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count)
+            guard before != after else { return false }
+            persistLocked()
+            return true
+        }
+    }
+
+    public static let defaultRetention: TimeInterval = 12 * 3_600
+
+    static func compacted(_ state: MeshState, now: Date, retention: TimeInterval) -> MeshState {
+        let cutoff = now.addingTimeInterval(-retention)
+        let posts = state.posts.filter { !isStale($0, cutoff: cutoff) }
+        let livePostIDs = Set(posts.map(\.id))
+        let proposals = state.proposals.filter { livePostIDs.contains($0.needID) && livePostIDs.contains($0.offerID) }
+        let liveProposalIDs = Set(proposals.map(\.id))
+        let messages = state.messages.filter { liveProposalIDs.contains($0.proposalID) }
+
+        let checkInCutoff = now.addingTimeInterval(-48 * 3_600)
+        var newest: [String: SafetyCheckIn] = [:]
+        for checkIn in state.checkIns where checkIn.createdAt >= checkInCutoff {
+            let key = "\(checkIn.circleID)|\(checkIn.authorID)"
+            if let current = newest[key], current.createdAt >= checkIn.createdAt { continue }
+            newest[key] = checkIn
+        }
+        let checkIns = state.checkIns.filter { newest["\($0.circleID)|\($0.authorID)"]?.id == $0.id }
+
+        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns)
+    }
+
+    static func isStale(_ post: MeshPost, cutoff: Date) -> Bool {
+        post.expiresAt < cutoff || (post.closedAt.map { $0 < cutoff } ?? false)
     }
 
     public func reset() {

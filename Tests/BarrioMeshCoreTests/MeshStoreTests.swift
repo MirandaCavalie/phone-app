@@ -8,8 +8,8 @@ final class MeshStoreTests: XCTestCase {
         let post = samplePost(author: "peer-a", kind: .need)
         let incoming = MeshState(posts: [post])
 
-        XCTAssertTrue(store.merge(incoming))
-        XCTAssertFalse(store.merge(incoming))
+        XCTAssertTrue(store.merge(incoming, now: post.createdAt))
+        XCTAssertFalse(store.merge(incoming, now: post.createdAt))
         XCTAssertEqual(store.state.posts, [post])
     }
 
