@@ -96,6 +96,14 @@ struct HomeView: View {
         }
     }
 
+    private var nearbyText: String {
+        let real = model.peerSession.connectedPeerNames.count
+        let simulated = model.simulatedNeighborCount
+        if simulated > 0, real == 0 { return "\(simulated) simulados" }
+        if simulated > 0 { return "\(real) cerca + \(simulated) sim." }
+        return "\(real) cerca"
+    }
+
     private var hero: some View {
         let emergency = model.memory.emergencyActive
         return VStack(alignment: .leading, spacing: 16) {
@@ -118,13 +126,17 @@ struct HomeView: View {
                     systemImage: model.effectiveConnectivity == .online ? "wifi" : "wifi.slash"
                 )
                 StatusChip(
-                    text: "\(model.peerSession.connectedPeerNames.count) cerca",
+                    text: nearbyText,
                     systemImage: "antenna.radiowaves.left.and.right",
-                    color: model.peerSession.connectedPeerNames.isEmpty ? .white : FaroTheme.beam
+                    color: model.peerSession.connectedPeerNames.isEmpty && model.simulatedNeighborCount == 0 ? .white : FaroTheme.beam
                 )
                 if !model.memory.unsentOutbox.isEmpty {
                     StatusChip(text: "\(model.memory.unsentOutbox.count) por enviar", systemImage: "envelope.fill")
                 }
+            }
+
+            if emergency {
+                MeshRadarView(nodes: model.meshNodes)
             }
 
             Button {
