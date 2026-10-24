@@ -15,8 +15,7 @@ struct AgentSnapshot: Sendable {
     let hasInternet: Bool
 
     var familyLines: [String] {
-        guard let circle = profile.familyCircleID else { return [] }
-        return state.latestCheckIns(circleID: circle)
+        state.latestCheckIns(circleCode: profile.familyCircleCode)
             .filter { $0.authorID != selfID }
             .map { "\($0.authorName): \($0.status.displayName.lowercased()) en \($0.area), a las \(Self.time($0.createdAt))" }
     }

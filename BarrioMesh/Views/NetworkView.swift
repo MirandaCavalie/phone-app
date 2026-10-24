@@ -37,6 +37,14 @@ struct NetworkView: View {
 
                 Section("Privacidad") {
                     Label("La sesión entre teléfonos está cifrada.", systemImage: "lock.fill")
+                    Label("Todo lo que publica este teléfono va firmado (Ed25519).", systemImage: "signature")
+                    Label("Los avisos familiares viajan cifrados de extremo a extremo.", systemImage: "lock.shield.fill")
+                    LabeledContent("Huella de este teléfono", value: model.identity.fingerprint)
+                        .font(.caption.monospaced())
+                    if model.rejectedItems > 0 {
+                        Label("Descarté \(model.rejectedItems) elementos sin firma válida.", systemImage: "exclamationmark.shield.fill")
+                            .foregroundStyle(.orange)
+                    }
                     Label("No se necesita cuenta, SIM ni servidor.", systemImage: "cloud.slash.fill")
                     Label("Solo se comparten zonas aproximadas.", systemImage: "location.slash.fill")
                 }

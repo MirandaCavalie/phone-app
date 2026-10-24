@@ -69,10 +69,22 @@ struct FamilyView: View {
             Text("Escribe el mismo código en el teléfono de cada familiar. Sus avisos de “estoy bien” saltan entre teléfonos cercanos hasta llegarles, sin internet.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            TextField("Ej.: casa-rodriguez-2026", text: $model.profile.familyCircleCode)
-                .textFieldStyle(.roundedBorder)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
+            HStack {
+                TextField("Ej.: ceiba-tucan-arepa-42", text: $model.profile.familyCircleCode)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("Generar") { model.profile.familyCircleCode = FamilyCircle.suggestCode() }
+                    .buttonStyle(.bordered)
+                if !model.profile.familyCircleCode.isEmpty {
+                    ShareLink(item: "Mi código de familia en Faro: \(model.profile.familyCircleCode)") {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+            Label("Los avisos viajan cifrados: los teléfonos que los retransmiten no pueden leerlos.", systemImage: "lock.shield.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             if !model.profile.familyCircleCode.isEmpty && model.profile.familyCircleID == nil {
                 Text("Usa al menos 4 letras o números.")
                     .font(.caption)
