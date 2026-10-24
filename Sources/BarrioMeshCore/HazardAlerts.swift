@@ -106,7 +106,7 @@ public enum USGSFeed {
                 source: "USGS",
                 kind: tsunami ? .tsunami : .earthquake,
                 magnitude: magnitude,
-                place: p.place ?? "Ubicación desconocida",
+                place: p.place ?? "Unknown location",
                 epicenter: GeoPoint(latitude: c[1], longitude: c[0]),
                 depthKm: c.count > 2 ? c[2] : 0,
                 occurredAt: Date(timeIntervalSince1970: p.time / 1_000),
@@ -160,29 +160,29 @@ public struct HazardAssessment: Equatable, Sendable {
         if alert.tsunamiFlag && alert.magnitude >= 7 && d <= 1_000 {
             return HazardAssessment(
                 level: .danger, distanceKm: d,
-                headline: "Posible tsunami: sismo M\(m) a \(km) km",
-                advice: "Si estás cerca de la costa, sube a una zona alta o aléjate tierra adentro ahora. No esperes a ver el mar."
+                headline: t("Posible tsunami: sismo M\(m) a \(km) km", "Possible tsunami: M\(m) quake \(km) km away"),
+                advice: t("Si estás cerca de la costa, sube a una zona alta ahora.", "If you are near the coast, move to high ground now.")
             )
         }
         if alert.magnitude >= 6.5 && d <= felt * 0.5 {
             return HazardAssessment(
                 level: .danger, distanceKm: d,
-                headline: "Sismo fuerte M\(m) a \(km) km de ti",
-                advice: "Cúbrete, agáchate y sujétate. Puede haber réplicas y cortes de red; activo el modo emergencia ahora."
+                headline: t("Sismo fuerte M\(m) a \(km) km de ti", "Strong M\(m) quake \(km) km away"),
+                advice: t("Agáchate, cúbrete y sujétate. Espera réplicas.", "Drop, cover and hold on. Expect aftershocks.")
             )
         }
         if alert.magnitude >= 5.5 && d <= felt {
             return HazardAssessment(
                 level: .warning, distanceKm: d,
-                headline: "Sismo M\(m) a \(km) km de ti",
-                advice: "Probablemente se sintió fuerte. Revisa a tu familia y prepárate para réplicas."
+                headline: t("Sismo M\(m) a \(km) km de ti", "M\(m) quake \(km) km away"),
+                advice: t("Revisa a tu familia y prepárate para réplicas.", "Check on your family and prepare for aftershocks.")
             )
         }
         if alert.magnitude >= 4.5 && d <= felt * 1.5 {
             return HazardAssessment(
                 level: .watch, distanceKm: d,
-                headline: "Sismo M\(m) cerca de tu región (\(km) km)",
-                advice: "Buen momento para revisar tu kit de emergencia."
+                headline: t("Sismo M\(m) en tu región (\(km) km)", "M\(m) quake in your region (\(km) km)"),
+                advice: t("Buen momento para revisar tu kit.", "Good time to check your kit.")
             )
         }
         return HazardAssessment(level: .ignore, distanceKm: d, headline: "", advice: "")

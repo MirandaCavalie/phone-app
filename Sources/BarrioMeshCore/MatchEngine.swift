@@ -35,8 +35,8 @@ public enum MatchEngine {
                 let score = quantityScore + areaScore + urgencyScore + ageScore
 
                 var reasons = [need.resource.displayName]
-                if enoughQuantity { reasons.append("cantidad suficiente") }
-                if sameArea { reasons.append("misma zona") }
+                if enoughQuantity { reasons.append(t("cantidad suficiente", "enough quantity")) }
+                if sameArea { reasons.append(t("misma zona", "same area")) }
 
                 return MatchCandidate(
                     need: need,

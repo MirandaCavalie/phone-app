@@ -6,8 +6,8 @@ public enum AgentMissingField: String, Equatable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .resource: "el tipo de ayuda"
-        case .area: "una zona aproximada"
+        case .resource: t("el tipo de ayuda", "the kind of help")
+        case .area: t("una zona aproximada", "an approximate area")
         }
     }
 }
@@ -55,10 +55,11 @@ public struct AgentDraft: Equatable, Sendable {
     public var isReady: Bool { missingFields.isEmpty }
 
     public var summary: String {
-        let action = kind == .need ? "necesitas" : "puedes ofrecer"
-        let resourceName = resource?.displayName.lowercased() ?? "un recurso por elegir"
-        let location = area.isEmpty ? "una zona por completar" : area
-        return "Entendí que \(action) \(quantity) \(unit) de \(resourceName) en \(location), con prioridad \(urgency.displayName.lowercased())."
+        let what = resource?.amount(quantity) ?? t("un recurso por elegir", "a resource to choose")
+        let location = area.isEmpty ? t("una zona por completar", "an area to fill in") : area
+        return kind == .need
+            ? t("Necesitas \(what) en \(location) (\(urgency.displayName.lowercased())).", "You need \(what) in \(location) (\(urgency.displayName.lowercased())).")
+            : t("Puedes ofrecer \(what) en \(location).", "You can offer \(what) in \(location).")
     }
 }
 
@@ -75,10 +76,10 @@ public enum OfflineAgent {
 
         var notices: [String] = []
         if containsPossibleExactAddress(normalized) {
-            notices.append("No guardé la dirección exacta. Escribe solo una zona aproximada.")
+            notices.append(t("No guardé la dirección exacta. Escribe solo una zona.", "I did not keep the exact address. Use an approximate area."))
         }
         if containsMedicalEmergency(normalized) {
-            notices.append("Esto puede ser una emergencia médica. Si puedes, llama al \(emergencyNumber); Faro no reemplaza a los servicios de emergencia.")
+            notices.append(t("Puede ser una emergencia médica: llama al \(emergencyNumber).", "This may be a medical emergency: call \(emergencyNumber)."))
         }
 
         return AgentDraft(
@@ -101,7 +102,7 @@ public enum OfflineAgent {
             return area
         }
 
-        let pattern = #"(?i)(?:\ben\b|\bzona\b|\bpor\b|\bcerca\s+de\b|\barea\b|\bárea\b)\s+([^,.!?]+)"#
+        let pattern = #"(?i)(?:\ben\b|\bzona\b|\bpor\b|\bcerca\s+de\b|\barea\b|\bárea\b|\bin\b|\bnear\b)\s+([^,.!?]+)"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let range = Range(match.range(at: 1), in: text) else {
@@ -109,7 +110,7 @@ public enum OfflineAgent {
         }
 
         let stopWords: Set<String> = [
-            "urgente", "importante", "hoy", "ahora", "ya", "porque", "para", "pero", "y"
+            "urgente", "importante", "hoy", "ahora", "ya", "porque", "para", "pero", "y", "urgent", "today", "now", "please", "and", "but"
         ]
         let words = text[range]
             .split(whereSeparator: { $0.isWhitespace })
@@ -128,10 +129,10 @@ public enum OfflineAgent {
     private static func detectKind(in text: String) -> PostKind {
         let offerTerms = [
             "puedo ayudar", "puedo ofrecer", "ofrezco", "tengo disponible", "tengo ", "dispongo",
-            "comparto", "i can help", "i can offer", "i have", "available"
+            "comparto", "i can help", "i can offer", "i have", "we have", "available"
         ]
         let needTerms = [
-            "necesito", "necesitamos", "busco", "hace falta", "me falta", "need", "looking for"
+            "necesito", "necesitamos", "busco", "hace falta", "me falta", "need", "looking for", "no tenemos", "we do not have"
         ]
 
         let offerIndex = firstIndex(ofAny: offerTerms, in: text)
@@ -149,9 +150,9 @@ public enum OfflineAgent {
 
     static func detectResource(in text: String) -> ResourceKind? {
         let terms: [(ResourceKind, [String])] = [
-            (.water, ["agua", "botella", "water"]),
-            (.power, ["bateria", "cargador", "cargar", "carga", "energia", "electricidad", "power bank", "charger"]),
-            (.transport, ["transporte", "auto", "carro", "vehiculo", "asiento", "llevar", "ride", "transport"]),
+            (.water, ["agua", "botella", "water", "bottle"]),
+            (.power, ["bateria", "cargador", "cargar", "carga", "energia", "electricidad", "power bank", "charger", "battery"]),
+            (.transport, ["transporte", "auto", "carro", "vehiculo", "asiento", "llevar", "ride", "transport", "car"]),
             (.translation, ["traduccion", "traducir", "interprete", "translation", "translator"]),
             (.medicine, ["medicamento", "medicina", "remedio", "receta", "insulina", "pastilla", "medicine", "medication"]),
             (.firstAid, ["primeros auxilios", "botiquin", "venda", "curacion", "first aid", "bandage"])

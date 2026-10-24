@@ -12,13 +12,16 @@ struct ContentView: View {
                 OnboardingView()
             }
         }
+        // Rebuild every screen when the language changes, including strings computed outside views.
+        .id(model.language)
+        .environment(\.locale, model.language.locale)
         .fullScreenCover(isPresented: quakeIsPresented) {
             if let alert = model.quakeAlert {
                 QuakeAlertView(alert: alert)
             }
         }
         .alert("Aviso de la red", isPresented: alertIsPresented) {
-            Button("Entendido", role: .cancel) { model.alertMessage = nil }
+            Button(t("Entendido", "OK"), role: .cancel) { model.alertMessage = nil }
         } message: {
             Text(model.alertMessage ?? "")
         }
@@ -32,16 +35,16 @@ struct ContentView: View {
                 .tag(0)
 
             FamilyView()
-                .tabItem { Label("Familia", systemImage: "person.2.fill") }
+                .tabItem { Label(t("Familia", "Family"), systemImage: "person.2.fill") }
                 .badge(model.memory.unsentOutbox.count)
                 .tag(1)
 
             NeighborsView()
-                .tabItem { Label("Vecinos", systemImage: "house.and.flag.fill") }
+                .tabItem { Label(t("Vecinos", "Neighbors"), systemImage: "house.and.flag.fill") }
                 .tag(2)
 
             ProfileView()
-                .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
+                .tabItem { Label(t("Perfil", "Profile"), systemImage: "person.crop.circle") }
                 .tag(3)
         }
     }

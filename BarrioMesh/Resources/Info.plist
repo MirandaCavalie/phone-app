@@ -3,9 +3,10 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>es</string>
+	<string>en</string>
 	<key>CFBundleLocalizations</key>
 	<array>
+		<string>en</string>
 		<string>es</string>
 	</array>
 	<key>CFBundleDisplayName</key>
@@ -27,18 +28,18 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Faro usa Bluetooth para que tu agente encuentre teléfonos cercanos cuando no hay internet.</string>
+	<string>Faro uses Bluetooth so your agent can reach nearby phones when there is no internet.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Faro usa el micrófono para que le hables a tu agente con la voz, incluso sin internet.</string>
+	<string>Faro uses the microphone so you can talk to your agent, even offline.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Faro entiende lo que dices directamente en tu teléfono para que no tengas que escribir en una emergencia.</string>
+	<string>Faro understands what you say on your phone, so you never have to type in an emergency.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_barrio-mesh._tcp</string>
 		<string>_barrio-mesh._udp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Faro conecta este iPhone directamente con teléfonos cercanos para avisar a tu familia y coordinar ayuda sin internet.</string>
+	<string>Faro connects this iPhone directly to nearby phones to reach your family and coordinate help without internet.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

@@ -8,189 +8,135 @@ struct FamilyView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 18) {
-                    myStatus
-                    circleCard
-                    familyList
-                    outbox
-                    contacts
-                }
-                .padding()
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Familia")
-        }
-    }
-
-    private var myStatus: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("¿Cómo estás?")
-                .font(.headline)
-            if let latest = model.myLatestCheckIn {
-                Label("Último aviso: \(latest.status.displayName.lowercased()), \(latest.createdAt.formatted(date: .omitted, time: .shortened))",
-                      systemImage: latest.status == .safe ? "heart.fill" : "exclamationmark.triangle.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(latest.status == .safe ? FaroTheme.safe : FaroTheme.ember)
-            }
-            HStack {
-                Button {
-                    model.checkIn(.safe)
-                } label: {
-                    Label("Estoy bien", systemImage: "heart.fill").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(FaroTheme.safe)
-
-                Button {
-                    model.checkIn(.needsHelp)
-                } label: {
-                    Label("Necesito ayuda", systemImage: "exclamationmark.triangle.fill").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(FaroTheme.ember)
-            }
-            .controlSize(.large)
-            .disabled(model.profile.familyCircleID == nil)
-
-            if model.profile.familyCircleID == nil {
-                Text("Primero crea el código de familia.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .faroCard()
-    }
-
-    private var circleCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Código de familia", systemImage: "person.badge.key.fill")
-                .font(.headline)
-            Text("Escribe el mismo código en el teléfono de cada familiar. Sus avisos de “estoy bien” saltan entre teléfonos cercanos hasta llegarles, sin internet.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            HStack {
-                TextField("Ej.: ceiba-tucan-arepa-42", text: $model.profile.familyCircleCode)
-                    .textFieldStyle(.roundedBorder)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                Button("Generar") { model.profile.familyCircleCode = FamilyCircle.suggestCode() }
-                    .buttonStyle(.bordered)
-                if !model.profile.familyCircleCode.isEmpty {
-                    ShareLink(item: "Mi código de familia en Faro: \(model.profile.familyCircleCode)") {
-                        Image(systemName: "square.and.arrow.up")
+            List {
+                Section {
+                    statusButtons
+                } footer: {
+                    if let latest = model.myLatestCheckIn {
+                        Text(t("Último aviso: \(latest.status.displayName.lowercased()), \(latest.createdAt.formatted(date: .omitted, time: .shortened))",
+                               "Last update: \(latest.status.displayName), \(latest.createdAt.formatted(date: .omitted, time: .shortened))"))
+                    } else if model.profile.familyCircleID == nil {
+                        Text(t("Primero crea el código de familia.", "Create a family code first."))
                     }
                 }
-            }
-            Label("Los avisos viajan cifrados: los teléfonos que los retransmiten no pueden leerlos.", systemImage: "lock.shield.fill")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if !model.profile.familyCircleCode.isEmpty && model.profile.familyCircleID == nil {
-                Text("Usa al menos 4 letras o números.")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-        }
-        .faroCard()
-    }
 
-    @ViewBuilder
-    private var familyList: some View {
-        if model.profile.familyCircleID != nil {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Lo que sé de tu familia", systemImage: "person.2.fill")
-                    .font(.headline)
-                if model.familyCheckIns.isEmpty {
-                    Text("Aún no llegó ningún aviso. Faro sigue escuchando.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(model.familyCheckIns) { checkIn in
-                    HStack(alignment: .top) {
-                        Image(systemName: checkIn.status == .safe ? "heart.circle.fill" : "exclamationmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(checkIn.status == .safe ? FaroTheme.safe : FaroTheme.ember)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(checkIn.authorName): \(checkIn.status.displayName.lowercased())")
-                                .font(.subheadline.weight(.semibold))
-                            Text("\(checkIn.area) · \(checkIn.createdAt.formatted(date: .omitted, time: .shortened))")
-                                .font(.caption)
+                if model.profile.familyCircleID != nil {
+                    Section(t("Tu familia", "Your family")) {
+                        if model.familyCheckIns.isEmpty {
+                            Text(t("Aún sin noticias. Sigo escuchando.", "No word yet. Still listening."))
                                 .foregroundStyle(.secondary)
                         }
-                    }
-                }
-            }
-            .faroCard(tint: FaroTheme.safe)
-        }
-    }
-
-    @ViewBuilder
-    private var outbox: some View {
-        let unsent = model.memory.unsentOutbox
-        if !unsent.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Mensajes listos para cuando vuelva la señal", systemImage: "envelope.badge.fill")
-                    .font(.headline)
-                Text(model.effectiveConnectivity == .online
-                     ? "Ya hay señal. Toca para abrir el mensaje y envíalo tú."
-                     : "Sin señal por ahora. Faro los guarda; los envías tú cuando vuelva.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                ForEach(unsent) { item in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(item.recipientName).font(.subheadline.weight(.semibold))
-                        Text(item.body).font(.caption).foregroundStyle(.secondary)
-                        HStack {
-                            Button("SMS") { open(item, channel: .sms) }
-                                .buttonStyle(.borderedProminent)
-                            Button("WhatsApp") { open(item, channel: .whatsapp) }
-                                .buttonStyle(.bordered)
-                                .tint(.green)
-                            Spacer()
-                            Button("Ya lo envié") { model.markSent(item) }
-                                .font(.caption)
+                        ForEach(model.familyCheckIns) { checkIn in
+                            HStack(spacing: 10) {
+                                Image(systemName: checkIn.status == .safe ? "heart.circle.fill" : "exclamationmark.circle.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(checkIn.status == .safe ? FaroTheme.safe : FaroTheme.ember)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("\(checkIn.authorName): \(checkIn.status.displayName.lowercased())")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("\(checkIn.area) · \(checkIn.createdAt.formatted(date: .omitted, time: .shortened))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
-                    .padding(.vertical, 4)
+                }
+
+                if !model.memory.unsentOutbox.isEmpty {
+                    Section {
+                        ForEach(model.memory.unsentOutbox) { item in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(item.recipientName).font(.subheadline.weight(.semibold))
+                                Text(item.body).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                                HStack {
+                                    Button("SMS") { open(item, channel: .sms) }
+                                        .buttonStyle(.borderedProminent)
+                                    Button("WhatsApp") { open(item, channel: .whatsapp) }
+                                        .buttonStyle(.bordered)
+                                        .tint(.green)
+                                    Spacer()
+                                    Button(t("Enviado", "Sent")) { model.markSent(item) }
+                                        .font(.caption)
+                                        .buttonStyle(.borderless)
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                    } header: {
+                        Text(t("Listos para enviar", "Ready to send"))
+                    } footer: {
+                        Text(model.effectiveConnectivity == .online
+                             ? t("Hay señal: ábrelo y envíalo tú.", "Signal is back: open it and send.")
+                             : t("Sin señal. Se envían cuando vuelva.", "No signal. Send them when it returns."))
+                    }
+                }
+
+                Section {
+                    HStack {
+                        TextField(t("Código", "Code"), text: $model.profile.familyCircleCode)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button(t("Generar", "Generate")) { model.profile.familyCircleCode = FamilyCircle.suggestCode() }
+                            .buttonStyle(.borderless)
+                        if !model.profile.familyCircleCode.isEmpty {
+                            ShareLink(item: t("Mi código de familia en Faro: \(model.profile.familyCircleCode)", "My Faro family code: \(model.profile.familyCircleCode)")) {
+                                Image(systemName: "square.and.arrow.up")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                } header: {
+                    Text(t("Código de familia", "Family code"))
+                } footer: {
+                    Text(!model.profile.familyCircleCode.isEmpty && model.profile.familyCircleID == nil
+                         ? t("Usa al menos 4 letras o números.", "Use at least 4 letters or numbers.")
+                         : t("El mismo código en cada teléfono. Los avisos viajan cifrados.", "Same code on every phone. Check-ins travel encrypted."))
+                }
+
+                Section(t("Contactos", "Contacts")) {
+                    ForEach(model.profile.familyContacts) { contact in
+                        LabeledContent(contact.name, value: "+\(contact.phone)")
+                    }
+                    .onDelete { model.profile.familyContacts.remove(atOffsets: $0) }
+                    HStack {
+                        TextField(t("Nombre", "Name"), text: $newContactName)
+                        TextField(t("Teléfono", "Phone"), text: $newContactPhone)
+                            .keyboardType(.phonePad)
+                        Button {
+                            model.profile.familyContacts.append(FamilyContact(name: newContactName, phone: newContactPhone))
+                            newContactName = ""
+                            newContactPhone = ""
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(newContactName.isEmpty || newContactPhone.filter(\.isNumber).count < 7)
+                    }
                 }
             }
-            .faroCard(tint: .indigo)
+            .navigationTitle(t("Familia", "Family"))
         }
     }
 
-    private var contacts: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Contactos de familia", systemImage: "phone.fill")
-                .font(.headline)
-            ForEach(model.profile.familyContacts) { contact in
-                HStack {
-                    Text(contact.name)
-                    Spacer()
-                    Text("+\(contact.phone)").foregroundStyle(.secondary)
-                    Button(role: .destructive) {
-                        model.profile.familyContacts.removeAll { $0.id == contact.id }
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                    }
-                    .buttonStyle(.borderless)
-                }
-                .font(.subheadline)
+    private var statusButtons: some View {
+        HStack(spacing: 10) {
+            Button { model.checkIn(.safe) } label: {
+                Label(t("Estoy bien", "I'm OK"), systemImage: "heart.fill").frame(maxWidth: .infinity)
             }
-            HStack {
-                TextField("Nombre", text: $newContactName)
-                TextField("Teléfono con país", text: $newContactPhone)
-                    .keyboardType(.phonePad)
-                Button("Agregar") {
-                    model.profile.familyContacts.append(FamilyContact(name: newContactName, phone: newContactPhone))
-                    newContactName = ""
-                    newContactPhone = ""
-                }
-                .disabled(newContactName.isEmpty || newContactPhone.filter(\.isNumber).count < 7)
+            .buttonStyle(.borderedProminent)
+            .tint(FaroTheme.safe)
+
+            Button { model.checkIn(.needsHelp) } label: {
+                Label(t("Ayuda", "Help"), systemImage: "exclamationmark.triangle.fill").frame(maxWidth: .infinity)
             }
-            .textFieldStyle(.roundedBorder)
-            .font(.subheadline)
+            .buttonStyle(.borderedProminent)
+            .tint(FaroTheme.ember)
         }
-        .faroCard()
+        .controlSize(.large)
+        .disabled(model.profile.familyCircleID == nil)
+        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+        .listRowBackground(Color.clear)
     }
 
     private func open(_ item: OutboxItem, channel: OutboxItem.Channel) {

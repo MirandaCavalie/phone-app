@@ -92,10 +92,10 @@ public enum SeismicIntensity: String, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .light: "leve"
-        case .moderate: "moderado"
-        case .strong: "fuerte"
-        case .severe: "muy fuerte"
+        case .light: t("leve", "light")
+        case .moderate: t("moderado", "moderate")
+        case .strong: t("fuerte", "strong")
+        case .severe: t("muy fuerte", "severe")
         }
     }
 }

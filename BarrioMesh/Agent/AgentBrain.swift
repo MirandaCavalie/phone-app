@@ -17,7 +17,7 @@ struct AgentSnapshot: Sendable {
     var familyLines: [String] {
         state.latestCheckIns(circleCode: profile.familyCircleCode)
             .filter { $0.authorID != selfID }
-            .map { "\($0.authorName): \($0.status.displayName.lowercased()) en \($0.area), a las \(Self.time($0.createdAt))" }
+            .map { "\($0.authorName): \($0.status.displayName.lowercased()) · \($0.area) · \(Self.time($0.createdAt))" }
     }
 
     var agreementLines: [String] {
@@ -27,22 +27,22 @@ struct AgentSnapshot: Sendable {
                   let offer = state.posts.first(where: { $0.id == proposal.offerID }),
                   need.authorID == selfID || offer.authorID == selfID else { return nil }
             let other = need.authorID == selfID ? offer.authorName : need.authorName
-            let done = proposal.completions.contains(selfID) ? " (entregado)" : ""
-            return "\(terms.quantity) \(need.unit) de \(need.resource.displayName.lowercased()) con \(other) en \(terms.meetingPoint) a las \(Self.time(terms.meetAt))\(done)"
+            let done = proposal.completions.contains(selfID) ? t(" (entregado)", " (delivered)") : ""
+            return "\(need.resource.amount(terms.quantity)) · \(other) · \(terms.meetingPoint) · \(Self.time(terms.meetAt))\(done)"
         }
     }
 
     var neighborhoodLines: [String] {
         state.posts.filter { $0.isActive() && $0.authorID != selfID }.map {
-            "\($0.authorName) \($0.kind == .need ? "necesita" : "ofrece") \($0.quantity) \($0.unit) de \($0.resource.displayName.lowercased()) en \($0.area)"
+            "\($0.authorName) \($0.kind == .need ? t("necesita", "needs") : t("ofrece", "offers")) \($0.resource.amount($0.quantity)) · \($0.area)"
         }
     }
 
     var profileLines: [String] {
-        var lines = ["Nombre: \(profile.name)", "Zona: \(profile.homeArea)", "País: \(profile.country.displayName), emergencias \(profile.country.emergencyNumber)"]
-        lines += profile.household.map { "Vive con: \($0.name) (\($0.relation))" + ($0.dependsOn.isEmpty ? "" : ", depende de \($0.dependsOn.map(\.displayName).joined(separator: ", "))") }
-        lines += profile.supplies.map { "Tiene \($0.quantity) \($0.resource.defaultUnit) de \($0.resource.displayName.lowercased()), reserva \($0.reserve)" }
-        lines += profile.preparedness.gaps.map { "Falta: \($0)" }
+        var lines = ["Name: \(profile.name)", "Area: \(profile.homeArea)", "Country: \(profile.country.displayName), emergency number \(profile.country.emergencyNumber)"]
+        lines += profile.household.map { "Lives with: \($0.name) (\($0.relation))" + ($0.dependsOn.isEmpty ? "" : ", relies on \($0.dependsOn.map(\.rawValue).joined(separator: ", "))") }
+        lines += profile.supplies.map { "Has \($0.quantity) \($0.resource.rawValue), reserve \($0.reserve)" }
+        lines += profile.preparedness.gaps.map { "Gap: \($0)" }
         return lines
     }
 
@@ -83,42 +83,42 @@ enum AgentBrain {
     static func localAnswer(_ question: String, snapshot: AgentSnapshot) -> String {
         let q = question.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es"))
 
-        if ["familia", "mama", "papa", "hijo", "hija", "abuel", "estan bien", "esta bien"].contains(where: q.contains) {
+        if ["familia", "mama", "papa", "hijo", "hija", "abuel", "estan bien", "esta bien", "family", "mom", "dad", "son", "daughter", "grand", "okay", " ok"].contains(where: q.contains) {
             let lines = snapshot.familyLines
             if snapshot.profile.familyCircleID == nil {
-                return "Todavía no tienes un código de familia. Créalo en Familia y compártelo con ellos para recibir sus avisos sin internet."
+                return t("Aún no tienes código de familia. Créalo en Familia y compártelo.", "You don't have a family code yet. Create it in Family and share it.")
             }
             return lines.isEmpty
-                ? "Aún no me llegó ningún aviso de tu familia. Sigo escuchando: los avisos saltan de teléfono en teléfono hasta llegar aquí."
-                : "Esto es lo último que sé de tu familia:\n• " + lines.joined(separator: "\n• ")
+                ? t("Aún no llega ningún aviso de tu familia. Sigo escuchando.", "No word from your family yet. I'm still listening.")
+                : t("Lo último de tu familia:\n• ", "Latest from your family:\n• ") + lines.joined(separator: "\n• ")
         }
 
-        if ["preparad", "kit", "falta", "listo", "mochila"].contains(where: q.contains) {
+        if ["preparad", "kit", "falta", "listo", "mochila", "prepared", "ready", "missing"].contains(where: q.contains) {
             let report = snapshot.profile.preparedness
             return report.gaps.isEmpty
-                ? "Tu hogar está preparado (\(report.score)/100). Revisa el agua y las baterías cada tres meses."
-                : "Tu preparación es de \(report.score)/100. Lo que falta:\n• " + report.gaps.joined(separator: "\n• ")
+                ? t("Tu hogar está listo (\(report.score)/100).", "Your household is ready (\(report.score)/100).")
+                : t("Preparación \(report.score)/100. Falta:\n• ", "Preparedness \(report.score)/100. Missing:\n• ") + report.gaps.joined(separator: "\n• ")
         }
 
-        if ["vecin", "cerca", "quien", "alguien", "ofrece", "necesita"].contains(where: q.contains) {
+        if ["vecin", "cerca", "quien", "alguien", "ofrece", "necesita", "neighbor", "nearby", "who", "anyone"].contains(where: q.contains) {
             let lines = snapshot.neighborhoodLines
             return lines.isEmpty
-                ? "No veo publicaciones de vecinos todavía. Hay \(snapshot.connectedPeers) teléfonos conectados."
-                : "Cerca de ti:\n• " + lines.prefix(6).joined(separator: "\n• ")
+                ? t("Aún no veo vecinos. \(snapshot.connectedPeers) teléfonos conectados.", "No neighbors yet. \(snapshot.connectedPeers) phones connected.")
+                : t("Cerca de ti:\n• ", "Near you:\n• ") + lines.prefix(6).joined(separator: "\n• ")
         }
 
         var parts: [String] = []
         parts.append(snapshot.memory.emergencyActive
-            ? "Estoy en modo emergencia y trabajo sin internet con \(snapshot.connectedPeers) teléfonos cercanos."
-            : "Todo tranquilo. Si se cae internet, activo el modo emergencia solo.")
+            ? t("Modo emergencia: trabajo sin internet con \(snapshot.connectedPeers) teléfonos cercanos.", "Emergency mode: working offline with \(snapshot.connectedPeers) nearby phones.")
+            : t("Todo tranquilo. Si pasa algo, me activo solo.", "All calm. If something happens, I'll step in."))
         if !snapshot.agreementLines.isEmpty {
-            parts.append("Acuerdos: " + snapshot.agreementLines.joined(separator: "; ") + ".")
+            parts.append(t("Acuerdos: ", "Deals: ") + snapshot.agreementLines.joined(separator: "; ") + ".")
         }
         if !snapshot.memory.pending.isEmpty {
-            parts.append("Tengo \(snapshot.memory.pending.count) \(snapshot.memory.pending.count == 1 ? "pregunta" : "preguntas") para ti en Inicio.")
+            parts.append(t("Tengo \(snapshot.memory.pending.count) pregunta(s) para ti.", "I have \(snapshot.memory.pending.count) question(s) for you."))
         }
         if let latest = snapshot.familyLines.first {
-            parts.append("Último aviso familiar: \(latest).")
+            parts.append(t("Último aviso familiar: \(latest).", "Latest family update: \(latest)."))
         }
         return parts.joined(separator: " ")
     }
@@ -144,7 +144,7 @@ private struct ModelProfile {
 @available(iOS 26.0, *)
 @Generable
 private struct ModelMember {
-    @Guide(description: "Relation to the user in Spanish, e.g. mamá, hijo, abuela")
+    @Guide(description: "Relation to the user in the user's language, e.g. mamá, hijo, mom, son")
     var relation: String
 
     @Guide(description: "Resources this person depends on. Only the values medicine or power.")
@@ -179,23 +179,26 @@ private extension AgentBrain {
         let area = OfflineAgent.sanitizeAreaCandidate(extracted.area)
         if profile.homeArea.isEmpty {
             profile.homeArea = area.isEmpty ? fallback.profile.homeArea : area
-            if !profile.homeArea.isEmpty { learned.append("Vives cerca de \(profile.homeArea).") }
+            if !profile.homeArea.isEmpty { learned.append(t("Vives cerca de \(profile.homeArea).", "You live near \(profile.homeArea).")) }
         }
         for member in extracted.household where !member.relation.isEmpty {
             let depends = member.dependsOn.compactMap(ResourceKind.init(rawValue:))
             profile.household.append(HouseholdMember(name: member.relation.capitalized, relation: member.relation, dependsOn: depends))
-            learned.append("Vives con tu \(member.relation)" + (depends.isEmpty ? "." : ", que depende de \(depends.map(\.displayName).joined(separator: " y ").lowercased())."))
+            let needs = depends.map(\.displayName).joined(separator: t(" y ", " and ")).lowercased()
+            learned.append(depends.isEmpty
+                ? t("Vives con tu \(member.relation).", "You live with your \(member.relation).")
+                : t("Vives con tu \(member.relation), que depende de \(needs).", "You live with your \(member.relation), who relies on \(needs)."))
         }
         for item in extracted.supplies {
             guard let resource = ResourceKind(rawValue: item.resource) else { continue }
             let reserve = [.water, .power, .medicine].contains(resource) ? item.quantity / 2 : 0
             profile.supplies.append(Supply(resource: resource, quantity: item.quantity, reserve: reserve))
-            learned.append("Tienes \(item.quantity) \(resource.defaultUnit) de \(resource.displayName.lowercased()).")
+            learned.append(t("Tienes \(resource.amount(item.quantity)).", "You have \(resource.amount(item.quantity))."))
         }
         for item in extracted.needs {
             guard let resource = ResourceKind(rawValue: item.resource) else { continue }
             profile.standingNeeds.append(StandingNeed(resource: resource, quantity: item.quantity))
-            learned.append("Si hay emergencia, vas a necesitar \(resource.displayName.lowercased()).")
+            learned.append(t("En una emergencia, vas a necesitar \(resource.displayName.lowercased()).", "In an emergency you will need \(resource.displayName.lowercased())."))
         }
 
         // If the model found nothing, the deterministic reading is more useful than an empty one.
@@ -213,7 +216,7 @@ private extension AgentBrain {
             ],
             instructions: """
             You are Faro, the user's personal emergency agent. It runs fully on this phone, without internet.
-            Answer in short, warm Spanish (tú). Use the tools to look up facts; never invent them.
+            Answer in short, warm \(Lang.isSpanish ? "Spanish (tú)" : "English"). Use the tools to look up facts; never invent them.
             Mode: \(snapshot.memory.emergencyActive ? "emergency" : "normal"). Nearby phones connected: \(snapshot.connectedPeers).
             Never give medical diagnoses or dosages. For life-threatening situations tell them to call \(snapshot.profile.country.emergencyNumber).
             """
@@ -238,7 +241,7 @@ private struct SnapshotTool: Tool {
         let keyword = arguments.filter.trimmingCharacters(in: .whitespaces).lowercased()
         let matching = keyword.isEmpty ? lines : lines.filter { $0.lowercased().contains(keyword) }
         let result = matching.isEmpty ? lines : matching
-        return result.isEmpty ? "Sin datos." : result.joined(separator: "\n")
+        return result.isEmpty ? "No data." : result.joined(separator: "\n")
     }
 }
 #endif

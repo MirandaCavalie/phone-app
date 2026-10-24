@@ -38,6 +38,13 @@ final class AppModel: ObservableObject {
     let hazardMonitor = HazardMonitor()
     let identity: AgentIdentity
     let narrator = Narrator()
+    /// English by default; the whole app, the agent's log and its voice follow this.
+    @Published var language: AppLanguage {
+        didSet {
+            Lang.current = language
+            UserDefaults.standard.set(language.rawValue, forKey: "faro.language")
+        }
+    }
     @Published var speaksUpdates: Bool = UserDefaults.standard.object(forKey: "faro.speaks") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(speaksUpdates, forKey: "faro.speaks")
@@ -66,6 +73,10 @@ final class AppModel: ObservableObject {
 
     init() {
         // The agent id is derived from the signing key, so nobody else can speak for this phone.
+        let savedLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: "faro.language") ?? "") ?? .english
+        language = savedLanguage
+        Lang.current = savedLanguage
+
         let identity = IdentityStore.loadOrCreate()
         self.identity = identity
         deviceID = identity.agentID
@@ -203,7 +214,7 @@ final class AppModel: ObservableObject {
             source: "USGS",
             kind: .earthquake,
             magnitude: 7.2,
-            place: "35 km al sureste de \(profile.approximateLocation.label) (simulado)",
+            place: t("35 km al sureste de \(profile.approximateLocation.label) (simulado)", "35 km SE of \(profile.approximateLocation.label) (simulated)"),
             epicenter: GeoPoint(latitude: home.latitude - 0.22, longitude: home.longitude + 0.22),
             depthKm: 15,
             occurredAt: Date(),
@@ -243,7 +254,7 @@ final class AppModel: ObservableObject {
     func cancelQuakeAlert() {
         quakeCountdown?.cancel()
         quakeAlert = nil
-        memory.record(ActivityEntry(date: Date(), kind: .mode, title: "Cancelaste la alerta de sismo", detail: "No activé el modo emergencia."))
+        memory.record(ActivityEntry(date: Date(), kind: .mode, title: t("Cancelaste la alerta de sismo", "You cancelled the quake alert")))
         save(memory, to: Self.memoryURL)
     }
 
@@ -268,7 +279,7 @@ final class AppModel: ObservableObject {
     func setEmergency(_ active: Bool) {
         let now = Date()
         memory = active
-            ? agent.activateEmergency(memory: memory, reason: "Lo activaste tú.", now: now)
+            ? agent.activateEmergency(memory: memory, reason: t("Lo activaste tú.", "You turned it on."), now: now)
             : agent.deactivateEmergency(memory: memory, now: now)
         save(memory, to: Self.memoryURL)
         runAgent()
@@ -481,10 +492,10 @@ final class AppModel: ObservableObject {
         let luis = PersonalAgent(
             selfID: luisIdentity.agentID,
             profile: AgentProfile(
-                name: "Luis (simulado)",
+                name: t("Luis (simulado)", "Luis (simulated)"),
                 country: profile.country,
                 homeArea: profile.homeArea.isEmpty ? "Chapinero" : profile.homeArea,
-                meetingPoint: "Tienda de la esquina",
+                meetingPoint: t("Tienda de la esquina", "Corner store"),
                 supplies: [
                     Supply(id: Self.demoID(1), resource: .water, quantity: 12, reserve: 8),
                     Supply(id: Self.demoID(2), resource: .power, quantity: 3, reserve: 1),
@@ -494,7 +505,7 @@ final class AppModel: ObservableObject {
             policy: AgentPolicy(autoGiveLimit: 10)
         )
         var family = AgentProfile(
-            name: "\(profile.household.first?.name ?? "Mamá") (simulado)",
+            name: "\(profile.household.first?.name ?? t("Mamá", "Mom")) \(t("(simulado)", "(simulated)"))",
             country: profile.country,
             homeArea: "Usaquén",
             familyCircleCode: profile.familyCircleCode
@@ -546,7 +557,7 @@ final class AppModel: ObservableObject {
         do {
             let message = try decoder.decode(MeshWireMessage.self, from: data)
             guard message.protocolVersion == MeshWireMessage.currentProtocolVersion else {
-                alertMessage = "Un teléfono cercano usa una versión incompatible de Faro."
+                alertMessage = t("Un teléfono cercano usa otra versión de Faro.", "A nearby phone runs a different Faro version.")
                 return
             }
             // Only correctly signed items, from the key first seen for each author, get in.
@@ -560,7 +571,7 @@ final class AppModel: ObservableObject {
                 runAgent()
             }
         } catch {
-            alertMessage = "No se pudo leer un mensaje de la red local."
+            alertMessage = t("No pude leer un mensaje de la red local.", "Could not read a message from the local network.")
         }
     }
 
@@ -586,13 +597,13 @@ final class AppModel: ObservableObject {
         } catch PeerSession.SendError.noConnectedPeers {
             // Offline-first: state stays queued locally until a peer connects.
         } catch {
-            alertMessage = "La información quedó guardada, pero aún no pudo enviarse."
+            alertMessage = t("Guardado, pero aún no se pudo enviar.", "Saved, but not sent yet.")
         }
     }
 
     private var sanitizedDisplayName: String {
         let cleaned = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return cleaned.isEmpty ? "Vecino" : cleaned
+        return cleaned.isEmpty ? t("Vecino", "Neighbor") : cleaned
     }
 
     // MARK: - Persistence

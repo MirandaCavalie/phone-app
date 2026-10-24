@@ -67,16 +67,16 @@ struct MeshRadarView: View {
 
                 // You.
                 canvas.fill(Path(ellipseIn: CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)), with: .color(beam))
-                canvas.draw(Text("Tú").font(.caption.weight(.bold)).foregroundStyle(.white), at: CGPoint(x: center.x, y: center.y + 20))
+                canvas.draw(Text(t("Tú", "You")).font(.caption.weight(.bold)).foregroundStyle(.white), at: CGPoint(x: center.x, y: center.y + 20))
             }
         }
         .frame(height: 230)
         .accessibilityElement()
-        .accessibilityLabel("Red cercana: \(nodes.count) teléfonos")
+        .accessibilityLabel(t("Red cercana: \(nodes.count) teléfonos", "Nearby network: \(nodes.count) phones"))
     }
 
     private func label(for node: Node) -> String {
-        let name = node.name.replacingOccurrences(of: " (simulado)", with: "*")
+        let name = node.name.replacingOccurrences(of: " (simulado)", with: "*").replacingOccurrences(of: " (simulated)", with: "*")
         switch node.kind {
         case .family: return "♥ \(name)"
         default: return name

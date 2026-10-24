@@ -236,7 +236,7 @@ public struct PersonalAgent: Sendable {
         memory.record(ActivityEntry(
             date: now,
             kind: .mode,
-            title: "Modo emergencia activado",
+            title: t("Modo emergencia activado", "Emergency mode on"),
             detail: reason
         ))
         return memory
@@ -247,7 +247,7 @@ public struct PersonalAgent: Sendable {
         var memory = memory
         memory.emergencyActive = false
         memory.pending.removeAll()
-        memory.record(ActivityEntry(date: now, kind: .mode, title: "Volví al modo normal"))
+        memory.record(ActivityEntry(date: now, kind: .mode, title: t("Volví al modo normal", "Back to normal mode")))
         return memory
     }
 
@@ -295,7 +295,7 @@ public struct PersonalAgent: Sendable {
         result.memory.record(ActivityEntry(
             date: now,
             kind: .approval,
-            title: "Aprobaste: \(pending.title)",
+            title: t("Aprobaste: \(pending.title)", "You approved: \(pending.title)"),
             detail: pending.detail
         ))
         if case .checkIn = pending.action { prepareFamilyMessages(result: &result, now: now) }
@@ -307,7 +307,7 @@ public struct PersonalAgent: Sendable {
         guard let index = memory.pending.firstIndex(where: { $0.id == pendingID }) else { return memory }
         let pending = memory.pending.remove(at: index)
         memory.dismissedKeys.insert(pendingID)
-        memory.record(ActivityEntry(date: now, kind: .approval, title: "Descartaste: \(pending.title)"))
+        memory.record(ActivityEntry(date: now, kind: .approval, title: t("Descartaste: \(pending.title)", "You dismissed: \(pending.title)")))
         return memory
     }
 
@@ -319,8 +319,8 @@ public struct PersonalAgent: Sendable {
         result.memory.record(ActivityEntry(
             date: now,
             kind: .checkIn,
-            title: "Avisé a tu familia: \(status.displayName.lowercased())",
-            detail: "Viaja de teléfono en teléfono hasta tu círculo familiar."
+            title: t("Avisé a tu familia: \(status.displayName.lowercased())", "Told your family: \(status.displayName)"),
+            detail: t("Viaja de teléfono en teléfono, cifrado.", "Hops phone to phone, encrypted.")
         ))
         prepareFamilyMessages(result: &result, now: now)
         return result
@@ -338,7 +338,7 @@ public struct PersonalAgent: Sendable {
             if policy.activateOnOutage, previous == .online {
                 result.memory = activateEmergency(
                     memory: result.memory,
-                    reason: "Se perdió la conexión a internet. Sigo trabajando por Bluetooth con los teléfonos cercanos.",
+                    reason: t("Se cayó internet. Sigo por Bluetooth.", "Internet is down. Continuing over Bluetooth."),
                     now: now
                 )
             }
@@ -348,8 +348,8 @@ public struct PersonalAgent: Sendable {
                 result.memory.record(ActivityEntry(
                     date: now,
                     kind: .outbox,
-                    title: "Volvió la señal: \(unsent) \(unsent == 1 ? "mensaje listo" : "mensajes listos")",
-                    detail: "Preparé tus avisos a la familia. Solo falta que toques enviar."
+                    title: t("Volvió la señal: \(unsent) \(unsent == 1 ? "mensaje listo" : "mensajes listos")", "Signal is back: \(unsent) \(unsent == 1 ? "message" : "messages") ready"),
+                    detail: t("Solo falta que toques enviar.", "Just tap send.")
                 ))
             }
         }
@@ -376,12 +376,12 @@ public struct PersonalAgent: Sendable {
 
     public func activateForEarthquake(_ event: SeismicEvent?, phones: Int, memory: AgentMemory, now: Date) -> AgentMemory {
         var detail = phones >= 2
-            ? "\(phones) teléfonos cercanos sintieron el mismo movimiento."
-            : "Lo sintió este teléfono y no lo cancelaste."
+            ? t("\(phones) teléfonos cercanos lo sintieron.", "\(phones) nearby phones felt it.")
+            : t("Lo sintió este teléfono.", "This phone felt it.")
         if let event {
-            detail += " Movimiento \(event.intensity.displayName) (\(String(format: "%.2f", event.peakAcceleration)) g durante \(Int(event.duration.rounded())) s)."
+            detail += t(" Movimiento \(event.intensity.displayName) (\(String(format: "%.2f", event.peakAcceleration)) g).", " \(event.intensity.displayName.capitalized) shaking (\(String(format: "%.2f", event.peakAcceleration)) g).")
         }
-        return activateEmergency(memory: memory, reason: "Posible sismo. " + detail, now: now)
+        return activateEmergency(memory: memory, reason: t("Posible sismo. ", "Possible earthquake. ") + detail, now: now)
     }
 
     /// Neighbors' phones felt shaking: if at least two did, act even if this phone was on a table.
@@ -405,8 +405,8 @@ public struct PersonalAgent: Sendable {
             let assessment = HazardAssessment.assess(alert, home: home)
             guard assessment.level > .ignore else { continue }
 
-            let source = alert.isSimulated ? "Simulación" : alert.source
-            let relayed = alert.relayedBy == selfID ? "" : " Me llegó por la red de teléfonos cercanos."
+            let source = alert.isSimulated ? t("Simulación", "Simulation") : alert.source
+            let relayed = alert.relayedBy == selfID ? "" : t(" Llegó por la red de vecinos.", " Relayed by nearby phones.")
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .alert,
@@ -417,7 +417,7 @@ public struct PersonalAgent: Sendable {
             if assessment.level == .danger, policy.activateOnOfficialAlert, !result.memory.emergencyActive {
                 result.memory = activateEmergency(
                     memory: result.memory,
-                    reason: "Alerta oficial (\(source)): \(assessment.headline). Me adelanto antes de que se caiga la red.",
+                    reason: t("Alerta oficial (\(source)): \(assessment.headline). Me adelanto a la caída de la red.", "Official alert (\(source)): \(assessment.headline). Acting before the network fails."),
                     now: now
                 )
             }
@@ -450,16 +450,16 @@ public struct PersonalAgent: Sendable {
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .checkIn,
-                title: "Avisé a tu familia que estás bien",
-                detail: "El aviso salta de teléfono en teléfono hasta tu círculo familiar, sin internet."
+                title: t("Avisé a tu familia que estás bien", "Told your family you're OK"),
+                detail: t("Viaja de teléfono en teléfono, cifrado.", "Hops phone to phone, encrypted.")
             ))
             prepareFamilyMessages(result: &result, now: now)
         } else {
             result.memory.pending.append(PendingApproval(
                 id: key,
                 createdAt: now,
-                title: "Avisar a tu familia que estás bien",
-                detail: "Se comparte tu nombre y tu zona aproximada (\(profile.homeArea)) con tu círculo familiar.",
+                title: t("Avisar a tu familia que estás bien", "Tell your family you're OK"),
+                detail: t("Comparte tu nombre y zona (\(profile.homeArea)).", "Shares your name and area (\(profile.homeArea))."),
                 action: .checkIn(checkIn)
             ))
         }
@@ -470,8 +470,9 @@ public struct PersonalAgent: Sendable {
         let time = Self.timeFormatter.string(from: now)
         let household = profile.household.isEmpty
             ? ""
-            : " Estoy con \(profile.household.map(\.name).joined(separator: ", "))."
-        let body = "Estoy bien.\(household) Zona: \(profile.homeArea). Mensaje preparado sin señal a las \(time) por mi agente Faro."
+            : t(" Estoy con \(profile.household.map(\.name).joined(separator: ", ")).", " I'm with \(profile.household.map(\.name).joined(separator: ", ")).")
+        let body = t("Estoy bien.\(household) Zona: \(profile.homeArea). Escrito sin señal a las \(time) por mi agente Faro.",
+                     "I'm OK.\(household) Area: \(profile.homeArea). Written offline at \(time) by my Faro agent.")
 
         var added = 0
         for contact in profile.familyContacts where !contact.phone.isEmpty && !alreadyQueued.contains(contact.phone) {
@@ -488,7 +489,7 @@ public struct PersonalAgent: Sendable {
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .outbox,
-                title: "Preparé \(added) \(added == 1 ? "mensaje" : "mensajes") para cuando vuelva la señal",
+                title: t("\(added) \(added == 1 ? "mensaje listo" : "mensajes listos") para cuando vuelva la señal", "\(added) \(added == 1 ? "message" : "messages") ready for when signal returns"),
                 detail: profile.familyContacts.map(\.name).joined(separator: ", ")
             ))
         }
@@ -528,7 +529,7 @@ public struct PersonalAgent: Sendable {
                     resource: resource,
                     quantity: 1,
                     urgency: .urgent,
-                    note: "Para \(member.name) (\(member.relation))."
+                    note: t("Para \(member.name) (\(member.relation)).", "For \(member.name) (\(member.relation)).")
                 ))
             }
         }
@@ -540,7 +541,7 @@ public struct PersonalAgent: Sendable {
                 resource: supply.resource,
                 quantity: supply.shareable,
                 urgency: .normal,
-                note: "Compartido por el agente de \(displayName); el hogar conserva su reserva."
+                note: t("Lo que sobra tras la reserva del hogar.", "Spare after the household reserve.")
             ))
         }
         return items
@@ -564,8 +565,8 @@ public struct PersonalAgent: Sendable {
                 createdAt: now,
                 expiresAt: now.addingTimeInterval(6 * 3_600)
             )
-            let verb = item.kind == .need ? "Pedí" : "Ofrecí"
-            let title = "\(verb) \(item.quantity) \(item.resource.defaultUnit) de \(item.resource.displayName.lowercased())"
+            let verb = item.kind == .need ? t("Pedí", "Requested") : t("Ofrecí", "Offered")
+            let title = "\(verb) \(item.resource.amount(item.quantity))"
 
             if policy.allowsPublishing(item.kind, resource: item.resource) {
                 result.perform(.publish(post, profileKey: item.key), now: now)
@@ -574,15 +575,15 @@ public struct PersonalAgent: Sendable {
                     kind: .published,
                     title: title,
                     detail: item.kind == .need
-                        ? "Lo sabía por tu perfil. Busco quién pueda ayudar cerca de \(profile.homeArea)."
-                        : "Solo lo que sobra después de la reserva de tu hogar."
+                        ? t("Desde tu perfil. Busco ayuda en \(profile.homeArea).", "From your profile. Looking for help in \(profile.homeArea).")
+                        : t("Solo lo que sobra de tu reserva.", "Only what's above your reserve.")
                 ))
             } else {
-                let question = item.kind == .need ? "¿Publico este pedido?" : "¿Ofrezco esto?"
+                let question = item.kind == .need ? t("¿Pido", "Request") : t("¿Ofrezco", "Offer")
                 result.memory.pending.append(PendingApproval(
                     id: item.key,
                     createdAt: now,
-                    title: "\(question) \(item.quantity) \(item.resource.defaultUnit) de \(item.resource.displayName.lowercased())",
+                    title: "\(question) \(item.resource.amount(item.quantity))\(t("?", "?"))",
                     detail: PolicyText.whyAsk(item.resource) + (item.note.isEmpty ? "" : " \(item.note)"),
                     action: .publish(post, profileKey: item.key)
                 ))
@@ -695,14 +696,14 @@ public struct PersonalAgent: Sendable {
                 senderName: displayName,
                 kind: .decline,
                 respondsTo: offer.id,
-                rationale: "Sin respuesta a tiempo; busco otra opción.",
+                rationale: t("Sin respuesta a tiempo.", "No answer in time."),
                 sentAt: now
             )), now: now)
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .negotiation,
-                title: "El agente de \(candidate.offer.authorName) no respondió",
-                detail: "Retiré la propuesta y sigo buscando \(candidate.need.resource.displayName.lowercased()) con otros vecinos."
+                title: t("\(candidate.offer.authorName) no respondió", "\(candidate.offer.authorName) didn't answer"),
+                detail: t("Busco \(candidate.need.resource.displayName.lowercased()) con otros vecinos.", "Trying other neighbors for \(candidate.need.resource.displayName.lowercased()).")
             ))
         }
     }
@@ -724,7 +725,7 @@ public struct PersonalAgent: Sendable {
     }
 
     private func propose(_ candidate: MatchCandidate, quantity: Int, alreadyCovered: Int, result: inout AgentStepResult, now: Date) {
-        let point = profile.meetingPoint.isEmpty ? "Punto de encuentro de \(candidate.need.area)" : profile.meetingPoint
+        let point = profile.meetingPoint.isEmpty ? t("Punto de encuentro de \(candidate.need.area)", "\(candidate.need.area) meeting point") : profile.meetingPoint
         let terms = MeetingTerms(quantity: quantity, meetingPoint: point, meetAt: Self.nextSlot(after: now, minutes: 30))
         let message = AgentMessage(
             proposalID: candidate.id,
@@ -740,9 +741,9 @@ public struct PersonalAgent: Sendable {
         result.memory.record(ActivityEntry(
             date: now,
             kind: .negotiation,
-            title: "Le propuse un encuentro al agente de \(candidate.offer.authorName)",
-            detail: "\(quantity) \(candidate.need.unit) de \(candidate.need.resource.displayName.lowercased()) en \(point) a las \(Self.timeFormatter.string(from: terms.meetAt))."
-                + (alreadyCovered > 0 ? " Ya tenías \(alreadyCovered) asegurados; busco el resto." : "")
+            title: t("Propuse un encuentro a \(candidate.offer.authorName)", "Proposed a handoff to \(candidate.offer.authorName)"),
+            detail: "\(candidate.need.resource.amount(quantity)) · \(point) · \(Self.timeFormatter.string(from: terms.meetAt))"
+                + (alreadyCovered > 0 ? t(" (ya tienes \(alreadyCovered))", " (\(alreadyCovered) already secured)") : "")
         ))
     }
 
@@ -755,18 +756,18 @@ public struct PersonalAgent: Sendable {
             kind: .accept,
             terms: terms,
             respondsTo: offer.id,
-            rationale: "Ayuda parcial aceptada: es mejor que nada mientras sigo buscando.",
+            rationale: t("Ayuda parcial aceptada.", "Partial help accepted."),
             sentAt: now
         )
-        let detail = "\(offer.senderName) puede dar \(terms.quantity) de \(candidate.need.quantity) \(candidate.need.unit) en \(terms.meetingPoint)."
+        let detail = t("\(offer.senderName) puede dar \(terms.quantity) de \(candidate.need.quantity) · \(terms.meetingPoint)", "\(offer.senderName) can give \(terms.quantity) of \(candidate.need.quantity) · \(terms.meetingPoint)")
 
         if policy.allowsAccepting(role: .need, resource: candidate.need.resource, quantity: terms.quantity) {
             result.perform(.send(accept), now: now)
-            result.memory.record(ActivityEntry(date: now, kind: .negotiation, title: "Acepté la contraoferta", detail: detail))
+            result.memory.record(ActivityEntry(date: now, kind: .negotiation, title: t("Acepté la contraoferta", "Accepted the counteroffer"), detail: detail))
         } else {
             askOnce(
                 key: "respond:\(offer.id.uuidString)",
-                title: "¿Aceptar la contraoferta de \(offer.senderName)?",
+                title: t("¿Aceptar la contraoferta de \(offer.senderName)?", "Accept \(offer.senderName)'s counteroffer?"),
                 detail: detail,
                 action: .send(accept),
                 result: &result,
@@ -794,16 +795,16 @@ public struct PersonalAgent: Sendable {
                 senderName: displayName,
                 kind: .decline,
                 respondsTo: offer.id,
-                rationale: "Todo lo disponible ya está comprometido con otros vecinos.",
+                rationale: t("Todo ya está comprometido.", "Everything is already promised."),
                 sentAt: now
             )), now: now)
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .negotiation,
-                title: "Rechacé el pedido de \(offer.senderName)",
+                title: t("Rechacé el pedido de \(offer.senderName)", "Declined \(offer.senderName)'s request"),
                 detail: prioritized
-                    ? "Ya comprometí lo que podías compartir de \(resource.displayName.lowercased()), priorizando los pedidos más urgentes."
-                    : "Ya comprometí todo lo que podías compartir de \(resource.displayName.lowercased())."
+                    ? t("Ya comprometí tu \(resource.displayName.lowercased()), priorizando lo urgente.", "Your \(resource.displayName.lowercased()) is already promised; urgent requests first.")
+                    : t("Ya comprometí tu \(resource.displayName.lowercased()).", "Your \(resource.displayName.lowercased()) is already promised.")
             ))
             return 0
         }
@@ -819,10 +820,10 @@ public struct PersonalAgent: Sendable {
                 kind: .counter,
                 terms: MeetingTerms(quantity: giving, meetingPoint: terms.meetingPoint, meetAt: terms.meetAt),
                 respondsTo: offer.id,
-                rationale: "Solo \(giving) sin tocar la reserva de tu hogar.",
+                rationale: t("Solo \(giving) sin tocar tu reserva.", "Only \(giving) without touching your reserve."),
                 sentAt: now
             )
-            title = "Contraofrecí \(giving) de \(terms.quantity) a \(offer.senderName)"
+            title = t("Contraofrecí \(giving) de \(terms.quantity) a \(offer.senderName)", "Countered \(offer.senderName): \(giving) of \(terms.quantity)")
         } else {
             response = AgentMessage(
                 proposalID: candidate.id,
@@ -831,14 +832,14 @@ public struct PersonalAgent: Sendable {
                 kind: .accept,
                 terms: terms,
                 respondsTo: offer.id,
-                rationale: "Dentro del límite que autorizaste.",
+                rationale: t("Dentro de tu límite.", "Within your limit."),
                 sentAt: now
             )
-            title = "Acepté darle \(giving) \(candidate.offer.unit) a \(offer.senderName)"
+            title = t("Acepté darle \(resource.count(giving)) a \(offer.senderName)", "Agreed to give \(offer.senderName) \(resource.count(giving))")
         }
-        var detail = "\(resource.displayName) en \(terms.meetingPoint) a las \(Self.timeFormatter.string(from: terms.meetAt))."
+        var detail = "\(resource.displayName) · \(terms.meetingPoint) · \(Self.timeFormatter.string(from: terms.meetAt))"
         if prioritized, candidate.need.urgency == .urgent {
-            detail += " Lo atendí primero por ser urgente."
+            detail += t(" · primero por ser urgente", " · served first, urgent")
         }
 
         if policy.allowsAccepting(role: .offer, resource: resource, quantity: giving) {
@@ -848,7 +849,7 @@ public struct PersonalAgent: Sendable {
         }
         askOnce(
             key: "respond:\(offer.id.uuidString)",
-            title: "¿Dar \(giving) \(candidate.offer.unit) de \(resource.displayName.lowercased()) a \(offer.senderName)?",
+            title: t("¿Dar \(resource.amount(giving)) a \(offer.senderName)?", "Give \(offer.senderName) \(resource.amount(giving))?"),
             detail: detail + " " + PolicyText.whyAsk(resource, quantity: giving, limit: policy.autoGiveLimit),
             action: .send(response),
             result: &result,
@@ -895,12 +896,12 @@ public struct PersonalAgent: Sendable {
 
             result.memory.seenAgreements.insert(proposalID)
             let counterpart = need.authorID == selfID ? offer.authorName : need.authorName
-            let verb = need.authorID == selfID ? "recibes" : "entregas"
+            let verb = need.authorID == selfID ? t("Recibes", "You get") : t("Entregas", "You give")
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .agreement,
-                title: "Acuerdo con \(counterpart)",
-                detail: "\(verb.capitalized) \(terms.quantity) \(need.unit) de \(need.resource.displayName.lowercased()) en \(terms.meetingPoint) a las \(Self.timeFormatter.string(from: terms.meetAt))."
+                title: t("Acuerdo con \(counterpart)", "Deal with \(counterpart)"),
+                detail: "\(verb) \(need.resource.amount(terms.quantity)) · \(terms.meetingPoint) · \(Self.timeFormatter.string(from: terms.meetAt))"
             ))
             result.memory.followUps.append(FollowUp(
                 proposalID: proposalID,
@@ -933,15 +934,15 @@ public struct PersonalAgent: Sendable {
             result.memory.pending.append(PendingApproval(
                 id: followUp.id,
                 createdAt: now,
-                title: "¿Se concretó la entrega con \(followUp.counterpartName)?",
-                detail: "Ya pasó la hora acordada. Si se hizo, la cierro para que nadie más la espere.",
+                title: t("¿Se hizo la entrega con \(followUp.counterpartName)?", "Did the handoff with \(followUp.counterpartName) happen?"),
+                detail: t("Ya pasó la hora acordada.", "The agreed time has passed."),
                 action: .complete(proposalID: followUp.proposalID)
             ))
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .followUp,
-                title: "Seguimiento: encuentro con \(followUp.counterpartName)",
-                detail: "Te pregunto si se concretó."
+                title: t("Seguimiento con \(followUp.counterpartName)", "Follow-up with \(followUp.counterpartName)"),
+                detail: t("Te pregunto si se hizo.", "Asking if it happened.")
             ))
         }
     }
@@ -954,7 +955,7 @@ public struct PersonalAgent: Sendable {
                 date: now,
                 kind: .family,
                 title: "\(checkIn.authorName): \(checkIn.status.displayName.lowercased())",
-                detail: "Zona \(checkIn.area) · enviado a las \(Self.timeFormatter.string(from: checkIn.createdAt)). Llegó por la red de teléfonos cercanos."
+                detail: "\(checkIn.area) · \(Self.timeFormatter.string(from: checkIn.createdAt)) · \(t("por la red de vecinos", "via nearby phones"))"
             ))
         }
     }
@@ -985,13 +986,13 @@ public struct PersonalAgent: Sendable {
 enum PolicyText {
     static func whyAsk(_ resource: ResourceKind, quantity: Int? = nil, limit: Int = 0) -> String {
         if AgentPolicy.alwaysAskResources.contains(resource) {
-            return "Siempre te pregunto antes de compartir algo de \(resource.displayName.lowercased())."
+            return t("Siempre pregunto por \(resource.displayName.lowercased()).", "I always ask about \(resource.displayName.lowercased()).")
         }
         if let quantity, quantity > limit {
             return limit == 0
-                ? "Me pediste que siempre pregunte antes de comprometer algo."
-                : "Supera el límite de \(limit) que me autorizaste."
+                ? t("Me pediste preguntar siempre.", "You asked me to always check.")
+                : t("Supera tu límite de \(limit).", "Above your limit of \(limit).")
         }
-        return "Tus permisos dicen que te pregunte."
+        return t("Tus permisos piden preguntar.", "Your permissions say to ask.")
     }
 }

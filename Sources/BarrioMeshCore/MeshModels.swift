@@ -115,11 +115,11 @@ public enum ProposalStatus: String, Sendable {
 
     public var displayName: String {
         switch self {
-        case .suggested: "Coincidencia encontrada"
-        case .waiting: "Esperando confirmación"
-        case .accepted: "Encuentro confirmado"
-        case .declined: "Propuesta rechazada"
-        case .completed: "Ayuda entregada"
+        case .suggested: t("Coincidencia", "Match found")
+        case .waiting: t("Negociando", "Negotiating")
+        case .accepted: t("Acordado", "Agreed")
+        case .declined: t("Rechazada", "Declined")
+        case .completed: t("Entregada", "Delivered")
         }
     }
 }
@@ -280,8 +280,8 @@ public enum SafetyStatus: String, Codable, CaseIterable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .safe: "Estoy bien"
-        case .needsHelp: "Necesito ayuda"
+        case .safe: t("Estoy bien", "I'm OK")
+        case .needsHelp: t("Necesito ayuda", "I need help")
         }
     }
 }
