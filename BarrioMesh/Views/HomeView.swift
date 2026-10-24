@@ -39,6 +39,10 @@ struct HomeView: View {
                             subtitle: t("Guion para el \(model.profile.country.emergencyNumber) y reporte en PDF", "\(model.profile.country.emergencyNumber) call script and PDF report")
                         ) { showingPaperwork = true }
                     } else {
+                        TodayCard()
+                        ForEach(model.suggestions.prefix(3)) { suggestion in
+                            SuggestionCard(suggestion: suggestion)
+                        }
                         PreparednessCard()
                     }
 
@@ -183,6 +187,70 @@ private struct RowButton: View {
             .faroCard()
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// The morning briefing: one glance at the day, readable or spoken.
+private struct TodayCard: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        let briefing = model.briefing
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(briefing.greeting).font(.headline)
+                Spacer()
+                Button {
+                    model.narrator.speak(briefing.spoken, country: model.profile.country)
+                } label: {
+                    Image(systemName: "speaker.wave.2.fill")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(t("Escuchar resumen", "Listen to briefing"))
+            }
+            ForEach(briefing.lines, id: \.self) { line in
+                Text(line)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .faroCard(tint: FaroTheme.beam)
+    }
+}
+
+/// Something the agent offers to handle: one tap to do it, one to hide it.
+private struct SuggestionCard: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.openURL) private var openURL
+    let suggestion: Suggestion
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: suggestion.icon)
+                .font(.title3)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(suggestion.title).font(.subheadline.weight(.semibold))
+                if !suggestion.detail.isEmpty {
+                    Text(suggestion.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                HStack {
+                    Button(suggestion.actionLabel) {
+                        withAnimation { model.perform(suggestion) { openURL($0) } }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button(t("Ahora no", "Not now")) {
+                        withAnimation { model.dismiss(suggestion) }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .controlSize(.small)
+            }
+            Spacer(minLength: 0)
+        }
+        .faroCard()
     }
 }
 

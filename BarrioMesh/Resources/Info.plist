@@ -29,6 +29,8 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Faro uses Bluetooth so your agent can reach nearby phones when there is no internet.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Faro reads today's calendar to know where you will be and adds the drills, refills and reminders you approve.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Faro uses the microphone so you can talk to your agent, even offline.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

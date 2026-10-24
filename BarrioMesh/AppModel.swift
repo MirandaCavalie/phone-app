@@ -36,6 +36,7 @@ final class AppModel: ObservableObject {
     let connectivity = ConnectivityMonitor()
     let seismometer = Seismometer()
     let hazardMonitor = HazardMonitor()
+    let assistant = DailyAssistant()
     let identity: AgentIdentity
     let narrator = Narrator()
     /// English by default; the whole app, the agent's log and its voice follow this.
@@ -68,6 +69,7 @@ final class AppModel: ObservableObject {
     private let decoder: JSONDecoder
     private var heartbeat: Task<Void, Never>?
     private var peerUpdates: AnyCancellable?
+    private var assistantUpdates: AnyCancellable?
     private var demoNeighbors: [(agent: PersonalAgent, memory: AgentMemory)] = []
     private var demoIdentities: [String: AgentIdentity] = [:]
 
@@ -122,6 +124,10 @@ final class AppModel: ObservableObject {
         hazardMonitor.home = { [weak self] in self?.profile.approximateLocation.point ?? GeoPoint(latitude: 4.711, longitude: -74.072) }
         hazardMonitor.onAlerts = { [weak self] alerts in self?.receiveOfficial(alerts) }
         hazardMonitor.start(relayedBy: deviceID)
+        assistantUpdates = assistant.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor in self?.objectWillChange.send() }
+        }
+        if profile.isConfigured { Task { await assistant.refreshCalendar() } }
         if profile.isConfigured { HazardMonitor.requestNotificationPermission() }
 
         // Follow-ups are time-based, so the agent also wakes up on its own.
@@ -345,6 +351,57 @@ final class AppModel: ObservableObject {
             nodes[other.authorID] = .init(id: other.authorID, name: other.authorName, kind: .agreement)
         }
         return nodes.values.sorted { $0.id < $1.id }
+    }
+
+    // MARK: - Proactive help
+
+    var briefing: ProactiveAgent.Briefing {
+        ProactiveAgent.briefing(profile: profile, alerts: officialAlerts, calendar: assistant.todayEvents, now: Date())
+    }
+
+    var suggestions: [Suggestion] {
+        ProactiveAgent.suggestions(
+            profile: profile, memory: memory, alerts: officialAlerts, calendar: assistant.todayEvents,
+            remindersScheduled: assistant.remindersScheduled, now: Date()
+        )
+    }
+
+    /// Performs an offer the person accepted, logs it, and hides it.
+    func perform(_ suggestion: Suggestion, openURL: @escaping (URL) -> Void) {
+        Task {
+            var done = true
+            var detail = ""
+            switch suggestion.action {
+            case let .addToCalendar(title, start, minutes, notes):
+                done = await assistant.addEvent(title: title, start: start, durationMinutes: minutes, notes: notes)
+                detail = done
+                    ? "\(title) · \(start.formatted(date: .abbreviated, time: .shortened))"
+                    : t("Permite el acceso al calendario en Ajustes.", "Allow calendar access in Settings.")
+            case .remindDoses:
+                await assistant.scheduleReminders(for: profile)
+                done = assistant.remindersScheduled
+            case let .call(number, label):
+                if let url = URL(string: "tel://\(number)") { openURL(url) }
+                detail = label
+            case let .message(item):
+                memory.outbox.append(item)
+                if let url = URL(string: "https://wa.me/\(item.phone)?text=\(item.body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") { openURL(url) }
+                detail = item.recipientName
+            }
+            if done { memory.dismissedKeys.insert(suggestion.id) }
+            memory.record(ActivityEntry(
+                date: Date(),
+                kind: .followUp,
+                title: done ? t("Hecho: \(suggestion.title)", "Done: \(suggestion.title)") : t("No pude: \(suggestion.title)", "Couldn't: \(suggestion.title)"),
+                detail: detail
+            ))
+            save(memory, to: Self.memoryURL)
+        }
+    }
+
+    func dismiss(_ suggestion: Suggestion) {
+        memory.dismissedKeys.insert(suggestion.id)
+        save(memory, to: Self.memoryURL)
     }
 
     // MARK: - Paperwork
