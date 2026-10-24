@@ -3,7 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>es</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>es</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Faro</string>
 	<key>CFBundleExecutable</key>
@@ -24,6 +28,10 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Faro usa Bluetooth para que tu agente encuentre teléfonos cercanos cuando no hay internet.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Faro usa el micrófono para que le hables a tu agente con la voz, incluso sin internet.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Faro entiende lo que dices directamente en tu teléfono para que no tengas que escribir en una emergencia.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_barrio-mesh._tcp</string>

@@ -35,6 +35,17 @@
 		10000000000000000000001F /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* OnboardingView.swift */; };
 		100000000000000000000020 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000020 /* ProfileView.swift */; };
 		100000000000000000000021 /* NeighborsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021 /* NeighborsView.swift */; };
+		100000000000000000000022 /* SeismicDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* SeismicDetector.swift */; };
+		100000000000000000000023 /* Seismometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* Seismometer.swift */; };
+		100000000000000000000024 /* QuakeAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* QuakeAlertView.swift */; };
+		100000000000000000000025 /* MeshSecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* MeshSecurity.swift */; };
+		100000000000000000000026 /* IdentityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* IdentityStore.swift */; };
+		100000000000000000000027 /* VoiceAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000027 /* VoiceAgent.swift */; };
+		100000000000000000000028 /* Paperwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* Paperwork.swift */; };
+		100000000000000000000029 /* PaperworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* PaperworkView.swift */; };
+		10000000000000000000002A /* MeshRadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* MeshRadarView.swift */; };
+		10000000000000000000002B /* HazardAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* HazardAlerts.swift */; };
+		10000000000000000000002C /* HazardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002C /* HazardMonitor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -71,6 +82,17 @@
 		20000000000000000000001F /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		200000000000000000000020 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		200000000000000000000021 /* NeighborsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborsView.swift; sourceTree = "<group>"; };
+		200000000000000000000022 /* SeismicDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeismicDetector.swift; sourceTree = "<group>"; };
+		200000000000000000000023 /* Seismometer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Seismometer.swift; sourceTree = "<group>"; };
+		200000000000000000000024 /* QuakeAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuakeAlertView.swift; sourceTree = "<group>"; };
+		200000000000000000000025 /* MeshSecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshSecurity.swift; sourceTree = "<group>"; };
+		200000000000000000000026 /* IdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityStore.swift; sourceTree = "<group>"; };
+		200000000000000000000027 /* VoiceAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAgent.swift; sourceTree = "<group>"; };
+		200000000000000000000028 /* Paperwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paperwork.swift; sourceTree = "<group>"; };
+		200000000000000000000029 /* PaperworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperworkView.swift; sourceTree = "<group>"; };
+		20000000000000000000002A /* MeshRadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshRadarView.swift; sourceTree = "<group>"; };
+		20000000000000000000002B /* HazardAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardAlerts.swift; sourceTree = "<group>"; };
+		20000000000000000000002C /* HazardMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardMonitor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +143,9 @@
 		400000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002A /* MeshRadarView.swift */,
+				200000000000000000000029 /* PaperworkView.swift */,
+				200000000000000000000024 /* QuakeAlertView.swift */,
 				200000000000000000000021 /* NeighborsView.swift */,
 				200000000000000000000020 /* ProfileView.swift */,
 				20000000000000000000001F /* OnboardingView.swift */,
@@ -148,6 +173,10 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002B /* HazardAlerts.swift */,
+				200000000000000000000028 /* Paperwork.swift */,
+				200000000000000000000025 /* MeshSecurity.swift */,
+				200000000000000000000022 /* SeismicDetector.swift */,
 				200000000000000000000019 /* ProfileInterpreter.swift */,
 				200000000000000000000018 /* PersonalAgent.swift */,
 				200000000000000000000017 /* AgentPolicy.swift */,
@@ -172,6 +201,10 @@
 		400000000000000000000008 /* Agent */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002C /* HazardMonitor.swift */,
+				200000000000000000000027 /* VoiceAgent.swift */,
+				200000000000000000000026 /* IdentityStore.swift */,
+				200000000000000000000023 /* Seismometer.swift */,
 				200000000000000000000014 /* AgentInterpreter.swift */,
 				20000000000000000000001A /* AgentBrain.swift */,
 				20000000000000000000001B /* ConnectivityMonitor.swift */,
@@ -224,10 +257,10 @@
 			};
 			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "BarrioMesh" */;
 			compatibilityVersion = "Xcode 15.0";
-			developmentRegion = en;
+			developmentRegion = es;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				es,
 				Base,
 			);
 			mainGroup = 400000000000000000000001;
@@ -256,6 +289,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10000000000000000000002C /* HazardMonitor.swift in Sources */,
+				10000000000000000000002B /* HazardAlerts.swift in Sources */,
+				10000000000000000000002A /* MeshRadarView.swift in Sources */,
 				100000000000000000000001 /* BarrioMeshApp.swift in Sources */,
 				100000000000000000000002 /* AppModel.swift in Sources */,
 				100000000000000000000003 /* PeerSession.swift in Sources */,
@@ -271,6 +307,14 @@
 				100000000000000000000013 /* OfflineAgent.swift in Sources */,
 				100000000000000000000014 /* AgentInterpreter.swift in Sources */,
 				100000000000000000000015 /* AskFaroView.swift in Sources */,
+				100000000000000000000029 /* PaperworkView.swift in Sources */,
+				100000000000000000000028 /* Paperwork.swift in Sources */,
+				100000000000000000000027 /* VoiceAgent.swift in Sources */,
+				100000000000000000000026 /* IdentityStore.swift in Sources */,
+				100000000000000000000025 /* MeshSecurity.swift in Sources */,
+				100000000000000000000024 /* QuakeAlertView.swift in Sources */,
+				100000000000000000000023 /* Seismometer.swift in Sources */,
+				100000000000000000000022 /* SeismicDetector.swift in Sources */,
 				100000000000000000000016 /* AgentProfile.swift in Sources */,
 				100000000000000000000017 /* AgentPolicy.swift in Sources */,
 				100000000000000000000018 /* PersonalAgent.swift in Sources */,
@@ -327,6 +371,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YWLSRVKSNH;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BarrioMesh/Resources/Info.plist;
@@ -348,6 +393,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YWLSRVKSNH;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BarrioMesh/Resources/Info.plist;

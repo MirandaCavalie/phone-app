@@ -17,6 +17,7 @@ struct ProfileView: View {
                     TextField("Zona aproximada", text: $model.profile.homeArea)
                     TextField("Punto de encuentro público", text: $model.profile.meetingPoint)
                     LabeledContent("Emergencias", value: model.profile.country.emergencyNumber)
+                    LabeledContent("Alertas sísmicas cerca de", value: model.profile.approximateLocation.label)
                 }
 
                 Section {
@@ -87,11 +88,14 @@ struct ProfileView: View {
 
                 Section {
                     Toggle("Activar modo emergencia al perder internet", isOn: $model.policy.activateOnOutage)
+                    Toggle("Activar al sentir un sismo", isOn: $model.policy.activateOnShaking)
+                    Toggle("Activar con alertas oficiales (USGS)", isOn: $model.policy.activateOnOfficialAlert)
                     Toggle("Avisar a mi familia que estoy bien", isOn: $model.policy.autoCheckIn)
                     Toggle("Pedir lo que mi hogar necesita", isOn: $model.policy.autoPublishNeeds)
                     Toggle("Ofrecer lo que nos sobra", isOn: $model.policy.autoPublishOffers)
                     Toggle("Aceptar ayuda de vecinos", isOn: $model.policy.autoAcceptIncomingHelp)
                     Stepper("Dar hasta \(model.policy.autoGiveLimit) sin preguntar", value: $model.policy.autoGiveLimit, in: 0...10)
+                    Toggle("Leer en voz alta lo importante en una emergencia", isOn: $model.speaksUpdates)
                 } header: {
                     Text("Lo que Faro puede hacer solo")
                 } footer: {
@@ -101,6 +105,8 @@ struct ProfileView: View {
                 Section("Red y demostración") {
                     NavigationLink("Red local") { NetworkView() }
                     Toggle("Simular corte de internet", isOn: $model.simulateOutage)
+                    Button("Simular sismo") { model.simulateQuake() }
+                    Button("Simular alerta oficial (USGS)") { model.simulateOfficialAlert() }
                     Button("Simular vecinos cercanos") { model.startSimulatedNeighbors() }
                     Text("Crea agentes ficticios marcados “(simulado)” para mostrar la negociación con un solo teléfono.")
                         .font(.caption)

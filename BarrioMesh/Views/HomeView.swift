@@ -2,13 +2,18 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var showingChat = false
+    @State private var showingChat = LaunchOptions.sheet == "chat"
+    @State private var showingPaperwork = LaunchOptions.sheet == "paperwork"
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
                     hero
+
+                    if let latest = model.officialAlerts.first {
+                        OfficialAlertCard(alert: latest.alert, assessment: latest.assessment, more: model.officialAlerts.count - 1)
+                    }
 
                     if !agreements.isEmpty {
                         SectionHeader(title: "Encuentros acordados")
@@ -24,7 +29,27 @@ struct HomeView: View {
                         }
                     }
 
-                    if !model.memory.emergencyActive {
+                    if model.memory.emergencyActive {
+                        Button {
+                            showingPaperwork = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                Image(systemName: "doc.badge.ellipsis")
+                                    .font(.title2)
+                                    .foregroundStyle(FaroTheme.beam)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Trámites listos").font(.headline)
+                                    Text("Guion para llamar al \(model.profile.country.emergencyNumber) y reporte de afectación prellenado.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                            }
+                            .faroCard()
+                        }
+                        .buttonStyle(.plain)
+                    } else {
                         PreparednessCard()
                     }
 
@@ -63,6 +88,9 @@ struct HomeView: View {
             .sheet(isPresented: $showingChat) {
                 AskFaroView()
             }
+            .sheet(isPresented: $showingPaperwork) {
+                PaperworkView()
+            }
         }
     }
 
@@ -70,6 +98,14 @@ struct HomeView: View {
         model.matchSummaries.filter {
             $0.status == .accepted && $0.requiredPeers.contains(model.deviceID)
         }
+    }
+
+    private var nearbyText: String {
+        let real = model.peerSession.connectedPeerNames.count
+        let simulated = model.simulatedNeighborCount
+        if simulated > 0, real == 0 { return "\(simulated) simulados" }
+        if simulated > 0 { return "\(real) cerca + \(simulated) sim." }
+        return "\(real) cerca"
     }
 
     private var hero: some View {
@@ -94,13 +130,17 @@ struct HomeView: View {
                     systemImage: model.effectiveConnectivity == .online ? "wifi" : "wifi.slash"
                 )
                 StatusChip(
-                    text: "\(model.peerSession.connectedPeerNames.count) cerca",
+                    text: nearbyText,
                     systemImage: "antenna.radiowaves.left.and.right",
-                    color: model.peerSession.connectedPeerNames.isEmpty ? .white : FaroTheme.beam
+                    color: model.peerSession.connectedPeerNames.isEmpty && model.simulatedNeighborCount == 0 ? .white : FaroTheme.beam
                 )
                 if !model.memory.unsentOutbox.isEmpty {
                     StatusChip(text: "\(model.memory.unsentOutbox.count) por enviar", systemImage: "envelope.fill")
                 }
+            }
+
+            if emergency {
+                MeshRadarView(nodes: model.meshNodes)
             }
 
             Button {
@@ -291,5 +331,56 @@ private struct ActivityRow: View {
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct OfficialAlertCard: View {
+    let alert: HazardAlert
+    let assessment: HazardAssessment
+    let more: Int
+
+    private var color: Color {
+        switch assessment.level {
+        case .danger: FaroTheme.ember
+        case .warning: .orange
+        default: .yellow
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(alert.kind == .tsunami ? "Alerta de tsunami" : "Alerta sísmica oficial",
+                      systemImage: alert.kind == .tsunami ? "water.waves" : "waveform.path.ecg")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(color)
+                Spacer()
+                Text(alert.isSimulated ? "\(alert.source) · simulada" : alert.source)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            Text(assessment.headline)
+                .font(.title3.weight(.bold))
+            Text(alert.place)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(assessment.advice)
+                .font(.subheadline)
+            HStack {
+                Text(alert.occurredAt, style: .relative) + Text(" · profundidad \(Int(alert.depthKm)) km")
+                Spacer()
+                if let url = URL(string: alert.url), !alert.isSimulated {
+                    Link("Ver en \(alert.source)", destination: url)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            if more > 0 {
+                Text("+\(more) alertas más en las últimas horas")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .faroCard(tint: color)
     }
 }

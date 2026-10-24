@@ -21,6 +21,8 @@ public struct AgentMemory: Codable, Equatable, Sendable {
     public var seenAgreements: Set<String>
     public var seenCheckIns: Set<UUID>
     public var lastConnectivity: Connectivity?
+    /// Official event ids already handled, however many phones relayed them.
+    public var seenHazards: Set<String>
 
     public init() {
         emergencyActive = false
@@ -35,6 +37,25 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         seenAgreements = []
         seenCheckIns = []
         lastConnectivity = nil
+        seenHazards = []
+    }
+
+    public init(from decoder: Decoder) throws {
+        // Memory saved by an older build keeps working when new fields are added.
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        emergencyActive = try c.decodeIfPresent(Bool.self, forKey: .emergencyActive) ?? false
+        emergencyStartedAt = try c.decodeIfPresent(Date.self, forKey: .emergencyStartedAt)
+        publishedFromProfile = try c.decodeIfPresent([String: UUID].self, forKey: .publishedFromProfile) ?? [:]
+        checkedInAt = try c.decodeIfPresent(Date.self, forKey: .checkedInAt)
+        log = try c.decodeIfPresent([ActivityEntry].self, forKey: .log) ?? []
+        pending = try c.decodeIfPresent([PendingApproval].self, forKey: .pending) ?? []
+        dismissedKeys = try c.decodeIfPresent(Set<String>.self, forKey: .dismissedKeys) ?? []
+        followUps = try c.decodeIfPresent([FollowUp].self, forKey: .followUps) ?? []
+        outbox = try c.decodeIfPresent([OutboxItem].self, forKey: .outbox) ?? []
+        seenAgreements = try c.decodeIfPresent(Set<String>.self, forKey: .seenAgreements) ?? []
+        seenCheckIns = try c.decodeIfPresent(Set<UUID>.self, forKey: .seenCheckIns) ?? []
+        lastConnectivity = try c.decodeIfPresent(Connectivity.self, forKey: .lastConnectivity)
+        seenHazards = try c.decodeIfPresent(Set<String>.self, forKey: .seenHazards) ?? []
     }
 
     public var unsentOutbox: [OutboxItem] { outbox.filter { $0.sentAt == nil } }
@@ -60,6 +81,7 @@ public struct ActivityEntry: Codable, Equatable, Identifiable, Sendable {
         case followUp
         case approval
         case outbox
+        case alert
     }
 
     public let id: UUID
@@ -235,6 +257,8 @@ public struct PersonalAgent: Sendable {
         var result = AgentStepResult(memory: memory)
 
         observeConnectivity(connectivity, result: &result, now: now)
+        observeSeismicReports(state.seismicReports, result: &result, now: now)
+        observeHazardAlerts(state.hazardAlerts, result: &result, now: now)
 
         if result.memory.emergencyActive {
             checkIn(result: &result, now: now)
@@ -331,6 +355,75 @@ public struct PersonalAgent: Sendable {
         }
     }
 
+    // MARK: - Earthquakes
+
+    public enum SeismicDecision: Equatable, Sendable {
+        case ignore
+        /// Only this phone felt it: give the person a moment to cancel a false alarm.
+        case countdown(seconds: Int)
+        /// Several phones felt it: act immediately.
+        case activateNow(phones: Int)
+    }
+
+    public static let seismicCountdown = 15
+
+    /// What to do when this phone's accelerometer reports shaking.
+    public func assessShaking(_ event: SeismicEvent, reports: [SeismicReport], memory: AgentMemory, now: Date) -> SeismicDecision {
+        guard policy.activateOnShaking, !memory.emergencyActive else { return .ignore }
+        let phones = SeismicCorroboration.devices(near: now, in: reports).union([selfID]).count
+        return phones >= 2 ? .activateNow(phones: phones) : .countdown(seconds: Self.seismicCountdown)
+    }
+
+    public func activateForEarthquake(_ event: SeismicEvent?, phones: Int, memory: AgentMemory, now: Date) -> AgentMemory {
+        var detail = phones >= 2
+            ? "\(phones) teléfonos cercanos sintieron el mismo movimiento."
+            : "Lo sintió este teléfono y no lo cancelaste."
+        if let event {
+            detail += " Movimiento \(event.intensity.displayName) (\(String(format: "%.2f", event.peakAcceleration)) g durante \(Int(event.duration.rounded())) s)."
+        }
+        return activateEmergency(memory: memory, reason: "Posible sismo. " + detail, now: now)
+    }
+
+    /// Neighbors' phones felt shaking: if at least two did, act even if this phone was on a table.
+    private func observeSeismicReports(_ reports: [SeismicReport], result: inout AgentStepResult, now: Date) {
+        guard policy.activateOnShaking, !result.memory.emergencyActive else { return }
+        let recent = reports.filter { now.timeIntervalSince($0.detectedAt) <= SeismicCorroboration.window && $0.detectedAt <= now.addingTimeInterval(5) }
+        let phones = SeismicCorroboration.devices(near: now, in: recent)
+        guard phones.count >= 2 else { return }
+        result.memory = activateForEarthquake(nil, phones: phones.count, memory: result.memory, now: now)
+    }
+
+    // MARK: - Official alerts
+
+    /// Official quake/tsunami alerts, fetched by any phone with internet and relayed over the mesh.
+    /// Dangerous ones nearby start emergency mode before the network collapses.
+    private func observeHazardAlerts(_ alerts: [HazardAlert], result: inout AgentStepResult, now: Date) {
+        let home = profile.isConfigured ? profile.approximateLocation.point : nil
+        for alert in alerts.sorted(by: { $0.occurredAt < $1.occurredAt })
+        where !result.memory.seenHazards.contains(alert.eventID) && now.timeIntervalSince(alert.occurredAt) < 6 * 3_600 {
+            result.memory.seenHazards.insert(alert.eventID)
+            let assessment = HazardAssessment.assess(alert, home: home)
+            guard assessment.level > .ignore else { continue }
+
+            let source = alert.isSimulated ? "Simulación" : alert.source
+            let relayed = alert.relayedBy == selfID ? "" : " Me llegó por la red de teléfonos cercanos."
+            result.memory.record(ActivityEntry(
+                date: now,
+                kind: .alert,
+                title: assessment.headline,
+                detail: "\(source): \(alert.place). \(assessment.advice)\(relayed)"
+            ))
+
+            if assessment.level == .danger, policy.activateOnOfficialAlert, !result.memory.emergencyActive {
+                result.memory = activateEmergency(
+                    memory: result.memory,
+                    reason: "Alerta oficial (\(source)): \(assessment.headline). Me adelanto antes de que se caiga la red.",
+                    now: now
+                )
+            }
+        }
+    }
+
     // MARK: - Check-in
 
     private func makeCheckIn(status: SafetyStatus, now: Date) -> SafetyCheckIn? {
@@ -343,7 +436,7 @@ public struct PersonalAgent: Sendable {
             area: profile.homeArea,
             householdSafe: profile.household.count + 1,
             createdAt: now
-        )
+        ).sealed(withCircleCode: profile.familyCircleCode)
     }
 
     private func checkIn(result: inout AgentStepResult, now: Date) {
@@ -499,49 +592,138 @@ public struct PersonalAgent: Sendable {
 
     // MARK: - Negotiation
 
+    /// How long the agent waits for a neighbor's agent before withdrawing and trying someone else.
+    public static let negotiationTimeout: TimeInterval = 8 * 60
+
     private func negotiate(state: MeshState, result: inout AgentStepResult, now: Date) {
         let candidates = MatchEngine.candidates(in: state.posts, at: now)
-        var busyNeeds = Set<UUID>()
+        // Units this agent commits during this step, so two requests answered together
+        // can never promise more than the offer holds.
+        var committedNow: [UUID: Int] = [:]
         var proposedThisStep = Set<UUID>()
 
-        // Needs that already have a live or agreed negotiation are not re-proposed.
-        for candidate in candidates {
+        withdrawStaleProposals(candidates: candidates, state: state, result: &result, now: now)
+        let state = Self.overlay(state, with: result)
+
+        // As receiver: one open negotiation per need; keep asking until the need is covered.
+        for candidate in receiverOrder(candidates, state: state, memory: result.memory) {
             let negotiation = state.negotiation(for: candidate.id)
-            if !negotiation.messages.isEmpty, !negotiation.isDeclined {
-                busyNeeds.insert(candidate.need.id)
+            if let offer = negotiation.openOffer,
+               offer.senderID != selfID,
+               negotiation.agreedTerms == nil,
+               !negotiation.isDeclined,
+               !negotiation.hasResponded(selfID, to: offer) {
+                respondAsReceiver(candidate, offer: offer, result: &result, now: now)
+                continue
             }
+
+            guard negotiation.messages.isEmpty,
+                  !proposedThisStep.contains(candidate.need.id),
+                  !hasOpenNegotiation(for: candidate.need, in: state) else { continue }
+            let remaining = candidate.need.quantity - receivedQuantity(for: candidate.need, in: state)
+            let available = candidate.offer.quantity - committedQuantity(for: candidate.offer, in: state, memory: result.memory)
+            guard remaining > 0, available > 0 else { continue }
+            propose(candidate, quantity: min(remaining, available), alreadyCovered: candidate.need.quantity - remaining, result: &result, now: now)
+            proposedThisStep.insert(candidate.need.id)
         }
 
-        for candidate in candidates {
-            let negotiation = state.negotiation(for: candidate.id)
-
-            if candidate.need.authorID == selfID {
-                if negotiation.messages.isEmpty {
-                    guard !busyNeeds.contains(candidate.need.id),
-                          !proposedThisStep.contains(candidate.need.id),
-                          committedQuantity(for: candidate.offer, in: state) < candidate.offer.quantity else { continue }
-                    propose(candidate, result: &result, now: now)
-                    proposedThisStep.insert(candidate.need.id)
-                } else if let offer = negotiation.openOffer,
-                          offer.senderID != selfID,
-                          negotiation.agreedTerms == nil,
-                          !negotiation.isDeclined,
-                          !negotiation.hasResponded(selfID, to: offer) {
-                    respondAsReceiver(candidate, offer: offer, result: &result, now: now)
-                }
-            } else if candidate.offer.authorID == selfID {
+        // As giver: answer the most vulnerable first — urgency, then who asked earliest.
+        let incoming = candidates
+            .filter { $0.offer.authorID == selfID }
+            .compactMap { candidate -> (MatchCandidate, AgentMessage)? in
+                let negotiation = state.negotiation(for: candidate.id)
                 guard let offer = negotiation.openOffer,
                       offer.senderID != selfID,
                       negotiation.agreedTerms == nil,
                       !negotiation.isDeclined,
-                      !negotiation.hasResponded(selfID, to: offer) else { continue }
-                respondAsGiver(candidate, offer: offer, state: state, result: &result, now: now)
+                      !negotiation.hasResponded(selfID, to: offer) else { return nil }
+                return (candidate, offer)
             }
+            .sorted {
+                if $0.0.need.urgency != $1.0.need.urgency { return $0.0.need.urgency.rawValue > $1.0.need.urgency.rawValue }
+                return $0.1.sentAt < $1.1.sentAt
+            }
+
+        for (candidate, offer) in incoming {
+            let alreadyCommitted = committedQuantity(for: candidate.offer, in: state, memory: result.memory) + committedNow[candidate.offer.id, default: 0]
+            let given = respondAsGiver(candidate, offer: offer, available: candidate.offer.quantity - alreadyCommitted, prioritized: incoming.count > 1, result: &result, now: now)
+            committedNow[candidate.offer.id, default: 0] += given
         }
     }
 
-    private func propose(_ candidate: MatchCandidate, result: inout AgentStepResult, now: Date) {
-        let quantity = min(candidate.need.quantity, candidate.offer.quantity)
+    /// Orders this agent's own matches so neighbors do not all pile onto the same giver:
+    /// first offers that can cover the whole need, then the least contested ones, then a
+    /// per-need pseudo-random tiebreak so different agents spread out.
+    private func receiverOrder(_ candidates: [MatchCandidate], state: MeshState, memory: AgentMemory) -> [MatchCandidate] {
+        let mine = candidates.filter { $0.need.authorID == selfID }
+        var contested: [UUID: Int] = [:]
+        for proposal in state.proposals {
+            let negotiation = state.negotiation(for: proposal.id)
+            if !negotiation.messages.isEmpty, !negotiation.isDeclined, negotiation.agreedTerms == nil {
+                contested[proposal.offerID, default: 0] += 1
+            }
+        }
+        func key(_ candidate: MatchCandidate) -> (Int, Int, Int, UInt64) {
+            let available = candidate.offer.quantity - committedQuantity(for: candidate.offer, in: state, memory: memory)
+            let remaining = candidate.need.quantity - receivedQuantity(for: candidate.need, in: state)
+            return (
+                -candidate.need.urgency.rawValue,
+                available >= remaining ? 0 : 1,
+                contested[candidate.offer.id, default: 0],
+                Self.spread(candidate.need.id, candidate.offer.id)
+            )
+        }
+        return mine.sorted { key($0) < key($1) }
+    }
+
+    static func spread(_ a: UUID, _ b: UUID) -> UInt64 {
+        (a.uuidString + b.uuidString).utf8.reduce(UInt64(14_695_981_039_346_656_037)) { ($0 ^ UInt64($1)) &* 1_099_511_628_211 }
+    }
+
+    /// Proposals this agent sent that nobody answered in time are withdrawn, freeing the need.
+    private func withdrawStaleProposals(candidates: [MatchCandidate], state: MeshState, result: inout AgentStepResult, now: Date) {
+        for candidate in candidates where candidate.need.authorID == selfID {
+            let negotiation = state.negotiation(for: candidate.id)
+            guard let offer = negotiation.openOffer,
+                  offer.senderID == selfID,
+                  negotiation.agreedTerms == nil,
+                  !negotiation.isDeclined,
+                  now.timeIntervalSince(offer.sentAt) >= Self.negotiationTimeout else { continue }
+            result.perform(.send(AgentMessage(
+                proposalID: candidate.id,
+                senderID: selfID,
+                senderName: displayName,
+                kind: .decline,
+                respondsTo: offer.id,
+                rationale: "Sin respuesta a tiempo; busco otra opción.",
+                sentAt: now
+            )), now: now)
+            result.memory.record(ActivityEntry(
+                date: now,
+                kind: .negotiation,
+                title: "El agente de \(candidate.offer.authorName) no respondió",
+                detail: "Retiré la propuesta y sigo buscando \(candidate.need.resource.displayName.lowercased()) con otros vecinos."
+            ))
+        }
+    }
+
+    private func hasOpenNegotiation(for need: MeshPost, in state: MeshState) -> Bool {
+        state.proposals.contains { proposal in
+            guard proposal.needID == need.id else { return false }
+            let negotiation = state.negotiation(for: proposal.id)
+            return !negotiation.messages.isEmpty && !negotiation.isDeclined && negotiation.agreedTerms == nil
+        }
+    }
+
+    /// Units of a need already secured in agreed negotiations.
+    private func receivedQuantity(for need: MeshPost, in state: MeshState) -> Int {
+        state.proposals
+            .filter { $0.needID == need.id }
+            .compactMap { state.negotiation(for: $0.id).agreedTerms?.quantity }
+            .reduce(0, +)
+    }
+
+    private func propose(_ candidate: MatchCandidate, quantity: Int, alreadyCovered: Int, result: inout AgentStepResult, now: Date) {
         let point = profile.meetingPoint.isEmpty ? "Punto de encuentro de \(candidate.need.area)" : profile.meetingPoint
         let terms = MeetingTerms(quantity: quantity, meetingPoint: point, meetAt: Self.nextSlot(after: now, minutes: 30))
         let message = AgentMessage(
@@ -560,6 +742,7 @@ public struct PersonalAgent: Sendable {
             kind: .negotiation,
             title: "Le propuse un encuentro al agente de \(candidate.offer.authorName)",
             detail: "\(quantity) \(candidate.need.unit) de \(candidate.need.resource.displayName.lowercased()) en \(point) a las \(Self.timeFormatter.string(from: terms.meetAt))."
+                + (alreadyCovered > 0 ? " Ya tenías \(alreadyCovered) asegurados; busco el resto." : "")
         ))
     }
 
@@ -592,13 +775,20 @@ public struct PersonalAgent: Sendable {
         }
     }
 
-    private func respondAsGiver(_ candidate: MatchCandidate, offer: AgentMessage, state: MeshState, result: inout AgentStepResult, now: Date) {
-        guard let terms = offer.terms else { return }
-        let available = candidate.offer.quantity - committedQuantity(for: candidate.offer, in: state)
+    /// Answers one request and returns how many units it committed.
+    private func respondAsGiver(
+        _ candidate: MatchCandidate,
+        offer: AgentMessage,
+        available: Int,
+        prioritized: Bool,
+        result: inout AgentStepResult,
+        now: Date
+    ) -> Int {
+        guard let terms = offer.terms else { return 0 }
         let resource = candidate.offer.resource
 
         if available <= 0 {
-            let decline = AgentMessage(
+            result.perform(.send(AgentMessage(
                 proposalID: candidate.id,
                 senderID: selfID,
                 senderName: displayName,
@@ -606,15 +796,16 @@ public struct PersonalAgent: Sendable {
                 respondsTo: offer.id,
                 rationale: "Todo lo disponible ya está comprometido con otros vecinos.",
                 sentAt: now
-            )
-            result.perform(.send(decline), now: now)
+            )), now: now)
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .negotiation,
                 title: "Rechacé el pedido de \(offer.senderName)",
-                detail: "Ya comprometí todo lo que podías compartir de \(resource.displayName.lowercased())."
+                detail: prioritized
+                    ? "Ya comprometí lo que podías compartir de \(resource.displayName.lowercased()), priorizando los pedidos más urgentes."
+                    : "Ya comprometí todo lo que podías compartir de \(resource.displayName.lowercased())."
             ))
-            return
+            return 0
         }
 
         let giving = min(terms.quantity, available)
@@ -645,21 +836,26 @@ public struct PersonalAgent: Sendable {
             )
             title = "Acepté darle \(giving) \(candidate.offer.unit) a \(offer.senderName)"
         }
-        let detail = "\(resource.displayName) en \(terms.meetingPoint) a las \(Self.timeFormatter.string(from: terms.meetAt))."
+        var detail = "\(resource.displayName) en \(terms.meetingPoint) a las \(Self.timeFormatter.string(from: terms.meetAt))."
+        if prioritized, candidate.need.urgency == .urgent {
+            detail += " Lo atendí primero por ser urgente."
+        }
 
         if policy.allowsAccepting(role: .offer, resource: resource, quantity: giving) {
             result.perform(.send(response), now: now)
             result.memory.record(ActivityEntry(date: now, kind: .negotiation, title: title, detail: detail))
-        } else {
-            askOnce(
-                key: "respond:\(offer.id.uuidString)",
-                title: "¿Dar \(giving) \(candidate.offer.unit) de \(resource.displayName.lowercased()) a \(offer.senderName)?",
-                detail: detail + " " + PolicyText.whyAsk(resource, quantity: giving, limit: policy.autoGiveLimit),
-                action: .send(response),
-                result: &result,
-                now: now
-            )
+            return giving
         }
+        askOnce(
+            key: "respond:\(offer.id.uuidString)",
+            title: "¿Dar \(giving) \(candidate.offer.unit) de \(resource.displayName.lowercased()) a \(offer.senderName)?",
+            detail: detail + " " + PolicyText.whyAsk(resource, quantity: giving, limit: policy.autoGiveLimit),
+            action: .send(response),
+            result: &result,
+            now: now
+        )
+        // Reserve the units while the person decides, so nothing else is promised meanwhile.
+        return giving
     }
 
     private func askOnce(key: String, title: String, detail: String, action: AgentAction, result: inout AgentStepResult, now: Date) {
@@ -667,12 +863,23 @@ public struct PersonalAgent: Sendable {
         result.memory.pending.append(PendingApproval(id: key, createdAt: now, title: title, detail: detail, action: action))
     }
 
-    /// Units of an offer already promised in agreed negotiations.
-    private func committedQuantity(for offerPost: MeshPost, in state: MeshState) -> Int {
-        state.proposals
-            .filter { $0.offerID == offerPost.id }
-            .compactMap { state.negotiation(for: $0.id).agreedTerms?.quantity }
-            .reduce(0, +)
+    /// Units of an offer already spoken for: agreed handoffs, counters its author sent that are
+    /// still awaiting an answer, and answers waiting for the person's approval.
+    private func committedQuantity(for offerPost: MeshPost, in state: MeshState, memory: AgentMemory) -> Int {
+        let proposals = state.proposals.filter { $0.offerID == offerPost.id }
+        let agreedOrOffered = proposals.compactMap { proposal -> Int? in
+            let negotiation = state.negotiation(for: proposal.id)
+            if let agreed = negotiation.agreedTerms { return agreed.quantity }
+            guard !negotiation.isDeclined, let open = negotiation.openOffer, open.senderID == offerPost.authorID else { return nil }
+            return open.terms?.quantity
+        }
+        let proposalIDs = Set(proposals.map(\.id))
+        let awaitingApproval = memory.pending.compactMap { pending -> Int? in
+            guard case let .send(message) = pending.action, proposalIDs.contains(message.proposalID),
+                  message.kind == .accept || message.kind == .counter else { return nil }
+            return message.terms?.quantity
+        }
+        return (agreedOrOffered + awaitingApproval).reduce(0, +)
     }
 
     // MARK: - Agreements and follow-ups
@@ -740,8 +947,7 @@ public struct PersonalAgent: Sendable {
     }
 
     private func noticeFamily(state: MeshState, result: inout AgentStepResult, now: Date) {
-        guard let circleID = profile.familyCircleID else { return }
-        for checkIn in state.latestCheckIns(circleID: circleID)
+        for checkIn in state.latestCheckIns(circleCode: profile.familyCircleCode)
         where checkIn.authorID != selfID && !result.memory.seenCheckIns.contains(checkIn.id) {
             result.memory.seenCheckIns.insert(checkIn.id)
             result.memory.record(ActivityEntry(

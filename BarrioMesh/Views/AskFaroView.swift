@@ -18,6 +18,7 @@ struct AskFaroView: View {
     @State private var message = ""
     @State private var isThinking = false
     @State private var composing: AgentDraft?
+    @StateObject private var listener = SpeechListener()
 
     var body: some View {
         NavigationStack {
@@ -57,7 +58,7 @@ struct AskFaroView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 FaroMark(size: 40)
-                Text("Pregúntame por tu familia, tus encuentros o tu kit. También puedes pedir u ofrecer ayuda.")
+                Text("Pregúntame por tu familia, tus encuentros o tu kit. También puedes pedir u ofrecer ayuda. Mantén presionado el micrófono para hablarme.")
                     .font(.subheadline)
             }
             Label("Todo se procesa en este iPhone. Sin internet, sin API.", systemImage: "lock.iphone")
@@ -124,6 +125,48 @@ struct AskFaroView: View {
     }
 
     private var inputBar: some View {
+        VStack(spacing: 6) {
+            if listener.isListening {
+                Label(listener.transcript.isEmpty ? "Te escucho…" : listener.transcript, systemImage: "waveform")
+                    .font(.subheadline)
+                    .symbolEffect(.variableColor.iterative, options: .repeating)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let problem = listener.problem {
+                Text(problem).font(.caption).foregroundStyle(.orange)
+            }
+            HStack(spacing: 10) {
+                micButton
+                textInput
+            }
+        }
+        .padding()
+        .background(.bar)
+        .onAppear { listener.configure(for: model.profile.country) }
+    }
+
+    /// Hold to talk, release to send.
+    private var micButton: some View {
+        Image(systemName: listener.isListening ? "mic.fill" : "mic")
+            .font(.title2)
+            .foregroundStyle(listener.isListening ? .white : Color.accentColor)
+            .frame(width: 44, height: 44)
+            .background(listener.isListening ? FaroTheme.ember : Color.accentColor.opacity(0.12), in: Circle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard !listener.isListening else { return }
+                        Task { await listener.start() }
+                    }
+                    .onEnded { _ in
+                        let heard = listener.finish()
+                        if !heard.isEmpty { send(heard, spoken: true) }
+                    }
+            )
+            .accessibilityLabel("Mantén presionado para hablarle a Faro")
+            .accessibilityAddTraits(.isButton)
+    }
+
+    private var textInput: some View {
         HStack(spacing: 10) {
             TextField("Escríbele a Faro", text: $message, axis: .vertical)
                 .lineLimit(1...4)
@@ -136,11 +179,9 @@ struct AskFaroView: View {
             }
             .disabled(message.trimmingCharacters(in: .whitespaces).isEmpty || isThinking)
         }
-        .padding()
-        .background(.bar)
     }
 
-    private func send(_ text: String) {
+    private func send(_ text: String, spoken: Bool = false) {
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty, !isThinking else { return }
         message = ""
@@ -157,6 +198,10 @@ struct AskFaroView: View {
             } else {
                 let (answer, engine) = await AgentBrain.answer(cleaned, snapshot: model.snapshot)
                 turns.append(Turn(fromUser: false, text: answer, engine: engine))
+                // Asked by voice, answered by voice.
+                if spoken || model.memory.emergencyActive, model.speaksUpdates {
+                    model.narrator.speak(answer, country: model.profile.country)
+                }
             }
         }
     }

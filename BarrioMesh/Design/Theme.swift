@@ -49,7 +49,7 @@ struct FaroMark: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill((emergency ? FaroTheme.ember : FaroTheme.beam).opacity(0.18))
+                .fill(emergency ? FaroTheme.ember.opacity(0.85) : FaroTheme.beam.opacity(0.18))
             Circle()
                 .strokeBorder((emergency ? FaroTheme.ember : FaroTheme.beam).opacity(0.45), lineWidth: 1)
             Image(systemName: "light.beacon.max.fill")
@@ -107,6 +107,7 @@ extension ActivityEntry.Kind {
         case .followUp: "clock.badge.checkmark.fill"
         case .approval: "checkmark.shield.fill"
         case .outbox: "envelope.fill"
+        case .alert: "exclamationmark.triangle.fill"
         }
     }
 
@@ -119,6 +120,7 @@ extension ActivityEntry.Kind {
         case .followUp: .orange
         case .approval: .teal
         case .outbox: .indigo
+        case .alert: FaroTheme.ember
         }
     }
 }

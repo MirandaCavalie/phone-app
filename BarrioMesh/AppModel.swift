@@ -34,6 +34,27 @@ final class AppModel: ObservableObject {
     let deviceID: String
     let peerSession: PeerSession
     let connectivity = ConnectivityMonitor()
+    let seismometer = Seismometer()
+    let hazardMonitor = HazardMonitor()
+    let identity: AgentIdentity
+    let narrator = Narrator()
+    @Published var speaksUpdates: Bool = UserDefaults.standard.object(forKey: "faro.speaks") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(speaksUpdates, forKey: "faro.speaks")
+            narrator.isEnabled = speaksUpdates
+            if !speaksUpdates { narrator.stop() }
+        }
+    }
+    /// Items from peers dropped because their signature did not check out.
+    @Published private(set) var rejectedItems = 0
+
+    /// A quake felt only by this phone, waiting out its cancel window.
+    struct QuakeAlert: Equatable {
+        let event: SeismicEvent
+        let deadline: Date
+    }
+    @Published private(set) var quakeAlert: QuakeAlert?
+    private var quakeCountdown: Task<Void, Never>?
 
     private let store: MeshStore
     private let encoder: JSONEncoder
@@ -41,16 +62,13 @@ final class AppModel: ObservableObject {
     private var heartbeat: Task<Void, Never>?
     private var peerUpdates: AnyCancellable?
     private var demoNeighbors: [(agent: PersonalAgent, memory: AgentMemory)] = []
+    private var demoIdentities: [String: AgentIdentity] = [:]
 
     init() {
-        let defaults = UserDefaults.standard
-        if let existing = defaults.string(forKey: Self.deviceIDKey) {
-            deviceID = existing
-        } else {
-            let created = UUID().uuidString.lowercased()
-            defaults.set(created, forKey: Self.deviceIDKey)
-            deviceID = created
-        }
+        // The agent id is derived from the signing key, so nobody else can speak for this phone.
+        let identity = IdentityStore.loadOrCreate()
+        self.identity = identity
+        deviceID = identity.agentID
 
         encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -58,6 +76,7 @@ final class AppModel: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
 
         store = MeshStore(fileURL: Self.applicationSupportURL.appendingPathComponent("mesh-state.json"))
+        store.compact()
         meshState = store.state
         let loadedProfile = Self.load(AgentProfile.self, from: Self.profileURL, decoder: decoder) ?? AgentProfile()
         profile = loadedProfile
@@ -85,10 +104,19 @@ final class AppModel: ObservableObject {
         }
         connectivity.start()
 
+        seismometer.onShaking = { [weak self] event in self?.feltShaking(event) }
+        seismometer.start()
+
+        hazardMonitor.isOnline = { [weak self] in self?.effectiveConnectivity == .online }
+        hazardMonitor.onAlerts = { [weak self] alerts in self?.receiveOfficial(alerts) }
+        hazardMonitor.start(relayedBy: deviceID)
+        if profile.isConfigured { HazardMonitor.requestNotificationPermission() }
+
         // Follow-ups are time-based, so the agent also wakes up on its own.
         heartbeat = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(20))
+                if self?.store.compact() == true { self?.meshState = self?.store.state ?? MeshState() }
                 self?.runAgent()
             }
         }
@@ -97,6 +125,14 @@ final class AppModel: ObservableObject {
         // Rehearsal shortcut: launch with `-faro-demo` to start the simulated neighbors.
         if ProcessInfo.processInfo.arguments.contains("-faro-demo"), profile.isConfigured {
             startSimulatedNeighbors()
+        }
+        // Rehearsal shortcut: `-faro-alert` plays an official USGS alert near home.
+        if ProcessInfo.processInfo.arguments.contains("-faro-alert"), profile.isConfigured {
+            simulateOfficialAlert()
+        }
+        // Rehearsal shortcut: `-faro-quake` plays the earthquake alert as if the phone felt shaking.
+        if ProcessInfo.processInfo.arguments.contains("-faro-quake"), profile.isConfigured {
+            simulateQuake()
         }
     }
 
@@ -128,6 +164,105 @@ final class AppModel: ObservableObject {
         let result = agent.step(state: store.state, memory: memory, connectivity: effectiveConnectivity, now: now)
         commit(result)
         stepDemoNeighbors(now: now)
+        if memory.emergencyActive, quakeAlert != nil {
+            // Nearby phones confirmed the quake while this one was still counting down.
+            quakeCountdown?.cancel()
+            quakeAlert = nil
+        }
+    }
+
+    // MARK: - Official alerts
+
+    /// Relevant official alerts this phone knows about, newest first, with their assessment.
+    var officialAlerts: [(alert: HazardAlert, assessment: HazardAssessment)] {
+        let home = profile.approximateLocation.point
+        return meshState.hazardAlerts
+            .map { ($0, HazardAssessment.assess($0, home: home)) }
+            .filter { $0.1.level > .ignore && Date().timeIntervalSince($0.0.occurredAt) < 6 * 3_600 }
+            .sorted { $0.0.occurredAt > $1.0.occurredAt }
+    }
+
+    /// Keeps only alerts that matter around here, then relays them to phones without internet.
+    private func receiveOfficial(_ alerts: [HazardAlert]) {
+        let home = profile.approximateLocation.point
+        let relevant = alerts.filter { HazardAssessment.assess($0, home: home).level > .ignore }
+        guard !relevant.isEmpty, store.add(relevant) else { return }
+        for alert in relevant where !memory.seenHazards.contains(alert.eventID) {
+            let assessment = HazardAssessment.assess(alert, home: home)
+            if assessment.level >= .warning { HazardMonitor.notify(assessment, alert: alert) }
+        }
+        publishChange()
+        runAgent()
+    }
+
+    /// Rehearsal: a strong quake near home, exactly as if USGS had reported it.
+    func simulateOfficialAlert() {
+        let home = profile.approximateLocation.point
+        let alert = HazardAlert(
+            eventID: "sim-\(UUID().uuidString.prefix(8))",
+            source: "USGS",
+            kind: .earthquake,
+            magnitude: 7.2,
+            place: "35 km al sureste de \(profile.approximateLocation.label) (simulado)",
+            epicenter: GeoPoint(latitude: home.latitude - 0.22, longitude: home.longitude + 0.22),
+            depthKm: 15,
+            occurredAt: Date(),
+            pagerLevel: "orange",
+            tsunamiFlag: false,
+            url: "https://earthquake.usgs.gov/earthquakes/map/",
+            relayedBy: deviceID,
+            isSimulated: true
+        )
+        receiveOfficial([alert])
+    }
+
+    // MARK: - Earthquakes
+
+    func feltShaking(_ event: SeismicEvent) {
+        guard profile.isConfigured else { return }
+        let now = Date()
+        let report = SeismicReport(deviceID: deviceID, area: profile.homeArea, peakAcceleration: event.peakAcceleration, detectedAt: now)
+        if store.add(report) { publishChange() }
+
+        switch agent.assessShaking(event, reports: store.state.seismicReports, memory: memory, now: now) {
+        case .ignore:
+            break
+        case let .activateNow(phones):
+            activateForQuake(event, phones: phones)
+        case let .countdown(seconds):
+            quakeAlert = QuakeAlert(event: event, deadline: now.addingTimeInterval(TimeInterval(seconds)))
+            quakeCountdown?.cancel()
+            quakeCountdown = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(seconds))
+                guard !Task.isCancelled, let self, let alert = self.quakeAlert else { return }
+                self.activateForQuake(alert.event, phones: 1)
+            }
+        }
+    }
+
+    func cancelQuakeAlert() {
+        quakeCountdown?.cancel()
+        quakeAlert = nil
+        memory.record(ActivityEntry(date: Date(), kind: .mode, title: "Cancelaste la alerta de sismo", detail: "No activé el modo emergencia."))
+        save(memory, to: Self.memoryURL)
+    }
+
+    func confirmQuakeNow() {
+        guard let alert = quakeAlert else { return }
+        activateForQuake(alert.event, phones: 1)
+    }
+
+    /// Rehearsal: the same path a real accelerometer event takes.
+    func simulateQuake() {
+        feltShaking(SeismicEvent(peakAcceleration: 0.21, duration: 3))
+    }
+
+    private func activateForQuake(_ event: SeismicEvent?, phones: Int) {
+        quakeCountdown?.cancel()
+        quakeAlert = nil
+        memory = agent.activateForEarthquake(event, phones: phones, memory: memory, now: Date())
+        save(memory, to: Self.memoryURL)
+        runAgent()
     }
 
     func setEmergency(_ active: Bool) {
@@ -168,20 +303,70 @@ final class AppModel: ObservableObject {
             memory = result.memory
             save(memory, to: Self.memoryURL)
         }
+        narrator.isEnabled = speaksUpdates && memory.emergencyActive
+        narrator.narrate(memory.log, country: profile.country)
+    }
+
+    // MARK: - Network picture
+
+    var simulatedNeighborCount: Int { demoNeighbors.count }
+
+    /// Everyone the agent can currently see, directly or through other phones.
+    var meshNodes: [MeshRadarView.Node] {
+        var nodes: [String: MeshRadarView.Node] = [:]
+        for post in meshState.posts where post.authorID != deviceID && post.isActive() {
+            nodes[post.authorID] = .init(id: post.authorID, name: post.authorName, kind: .relayed)
+        }
+        let connected = Set(peerSession.connectedPeerNames)
+        for name in connected {
+            let key = "peer:\(name)"
+            nodes[key] = .init(id: key, name: String(name.split(separator: "-").first ?? Substring(name)), kind: .peer)
+        }
+        for demo in demoNeighbors {
+            nodes[demo.agent.selfID] = .init(id: demo.agent.selfID, name: demo.agent.profile.name, kind: .peer)
+        }
+        for checkIn in familyCheckIns {
+            nodes[checkIn.authorID] = .init(id: checkIn.authorID, name: checkIn.authorName, kind: .family)
+        }
+        for summary in matchSummaries where summary.status == .accepted && summary.requiredPeers.contains(deviceID) {
+            let other = summary.candidate.need.authorID == deviceID ? summary.candidate.offer : summary.candidate.need
+            nodes[other.authorID] = .init(id: other.authorID, name: other.authorName, kind: .agreement)
+        }
+        return nodes.values.sorted { $0.id < $1.id }
+    }
+
+    // MARK: - Paperwork
+
+    var callScript: Paperwork.CallScript {
+        Paperwork.callScript(profile: profile, state: meshState, selfID: deviceID, now: Date())
+    }
+
+    var incidentReport: Paperwork.Report {
+        Paperwork.report(profile: profile, memory: memory, state: meshState, selfID: deviceID, now: Date())
     }
 
     // MARK: - Family
 
     var familyCheckIns: [SafetyCheckIn] {
-        guard let circle = profile.familyCircleID else { return [] }
-        return meshState.latestCheckIns(circleID: circle).filter { $0.authorID != deviceID }
+        meshState.latestCheckIns(circleCode: profile.familyCircleCode).filter { $0.authorID != deviceID }
     }
 
     var myLatestCheckIn: SafetyCheckIn? {
-        meshState.checkIns.filter { $0.authorID == deviceID }.max(by: { $0.createdAt < $1.createdAt })
+        meshState.checkIns
+            .filter { $0.authorID == deviceID }
+            .max(by: { $0.createdAt < $1.createdAt })?
+            .opened(withCircleCode: profile.familyCircleCode)
     }
 
     // MARK: - Mesh
+
+    /// Units already agreed between agents for a need (received) or an offer (promised).
+    func agreedQuantity(for post: MeshPost) -> Int {
+        meshState.proposals
+            .filter { post.kind == .need ? $0.needID == post.id : $0.offerID == post.id }
+            .compactMap { meshState.negotiation(for: $0.id).agreedTerms?.quantity }
+            .reduce(0, +)
+    }
 
     var activeNeeds: [MeshPost] { activePosts.filter { $0.kind == .need } }
     var activeOffers: [MeshPost] { activePosts.filter { $0.kind == .offer } }
@@ -274,6 +459,7 @@ final class AppModel: ObservableObject {
         meshState = store.state
         memory = AgentMemory()
         demoNeighbors = []
+        demoIdentities = [:]
         save(memory, to: Self.memoryURL)
         broadcastState()
     }
@@ -290,8 +476,10 @@ final class AppModel: ObservableObject {
     /// They are labeled "(simulado)" everywhere and never pretend a real peer is connected.
     func startSimulatedNeighbors() {
         guard demoNeighbors.isEmpty else { return }
+        let luisIdentity = AgentIdentity.deterministic(seed: "luis")
+        let familyIdentity = AgentIdentity.deterministic(seed: "family")
         let luis = PersonalAgent(
-            selfID: "demo-luis",
+            selfID: luisIdentity.agentID,
             profile: AgentProfile(
                 name: "Luis (simulado)",
                 country: profile.country,
@@ -312,9 +500,10 @@ final class AppModel: ObservableObject {
             familyCircleCode: profile.familyCircleCode
         )
         family.standingNeeds = []
-        let relative = PersonalAgent(selfID: "demo-family", profile: family, policy: AgentPolicy())
+        let relative = PersonalAgent(selfID: familyIdentity.agentID, profile: family, policy: AgentPolicy())
 
         let now = Date()
+        demoIdentities = [luis.selfID: luisIdentity, relative.selfID: familyIdentity]
         demoNeighbors = [luis, relative].map { agent in
             var memory = agent.activateEmergency(memory: AgentMemory(), reason: "Simulación", now: now)
             // Simulated agents are not persisted; remember what they already published in an earlier run.
@@ -360,7 +549,10 @@ final class AppModel: ObservableObject {
                 alertMessage = "Un teléfono cercano usa una versión incompatible de Faro."
                 return
             }
-            if store.merge(message.state) {
+            // Only correctly signed items, from the key first seen for each author, get in.
+            let verdict = MeshSecurity.verify(message.state, known: store.state)
+            rejectedItems += verdict.rejected
+            if store.merge(verdict.accepted) {
                 meshState = store.state
                 lastSyncAt = Date()
                 // Gossip only converges when newly learned state is relayed onward.
@@ -373,8 +565,18 @@ final class AppModel: ObservableObject {
     }
 
     private func publishChange() {
+        signLocalItems()
         meshState = store.state
         broadcastState()
+    }
+
+    /// Signs whatever this phone (or a simulated neighbor on it) authored and has not signed yet.
+    private func signLocalItems() {
+        var signatures = MeshSecurity.sign(store.state, authorID: deviceID, with: identity)
+        for (author, demoIdentity) in demoIdentities {
+            signatures += MeshSecurity.sign(store.state, authorID: author, with: demoIdentity)
+        }
+        if !signatures.isEmpty { store.add(signatures) }
     }
 
     private func broadcastState() {
@@ -413,7 +615,6 @@ final class AppModel: ObservableObject {
         UUID(uuidString: String(format: "FA20DE30-0000-4000-8000-%012d", n))!
     }
 
-    private static let deviceIDKey = "barrio-mesh.device-id"
 
     private static var applicationSupportURL: URL {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

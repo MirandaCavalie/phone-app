@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:
+    name: Agent core tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: swift test
+      - name: Core checks
+        run: swift run CoreChecks
+      - name: Neighborhood simulation (fails on over-commitment, forgery or divergence)
+        run: swift run -c release FaroSim
+
+  ios:
+    name: iOS simulator build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          xcodebuild -project BarrioMesh.xcodeproj -scheme BarrioMesh \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -20

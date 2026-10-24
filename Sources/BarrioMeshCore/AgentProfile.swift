@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// What the personal agent knows about its person. It lives only on this phone:
@@ -48,6 +49,11 @@ public struct AgentProfile: Codable, Equatable, Sendable {
     }
 
     /// How ready the household is for an outage, from 0 to 100.
+    /// Approximate location used only to measure distance to official alerts. Never shared.
+    public var approximateLocation: (point: GeoPoint, label: String) {
+        Places.locate(area: homeArea, country: country)
+    }
+
     public var preparedness: PreparednessReport {
         Preparedness.evaluate(self)
     }
@@ -165,15 +171,13 @@ public struct FamilyContact: Codable, Equatable, Identifiable, Sendable {
 public enum FamilyCircle {
     /// A short, stable, non-reversible tag for a family code. Not cryptographic security —
     /// it only avoids broadcasting the code itself to every nearby phone.
+    /// A stable tag derived from the family code. Phones use it to recognize their circle;
+    /// the readable content of a check-in is additionally encrypted (see `SafetyCheckIn.sealed`).
     public static func identifier(for code: String) -> String? {
-        let normalized = code.lowercased().filter { $0.isLetter || $0.isNumber }
+        let normalized = normalized(code)
         guard normalized.count >= 4 else { return nil }
-        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
-        for byte in normalized.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 0x0000_0100_0000_01b3
-        }
-        return String(hash, radix: 36)
+        let digest = SHA256.hash(data: Data(("faro-circle-id|" + normalized).utf8))
+        return digest.prefix(8).map { String(format: "%02x", $0) }.joined()
     }
 }
 
