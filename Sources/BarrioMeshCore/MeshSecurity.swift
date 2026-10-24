@@ -17,6 +17,15 @@ public struct AgentIdentity: Sendable {
 
     public var publicKey: Data { privateKey.publicKey.rawRepresentation }
 
+    /// Self-certifying id: derived from the public key, so nobody can claim it without the key.
+    public var agentID: String { MeshSecurity.agentID(for: publicKey) }
+
+    /// A fixed identity for simulated neighbors, stable across launches.
+    public static func deterministic(seed: String) -> AgentIdentity {
+        let bytes = Data(SHA256.hash(data: Data(("faro-demo|" + seed).utf8)))
+        return (try? AgentIdentity(rawRepresentation: bytes)) ?? AgentIdentity()
+    }
+
     /// Short human-checkable fingerprint, e.g. for comparing two phones in person.
     public var fingerprint: String { MeshSecurity.fingerprint(of: publicKey) }
 
@@ -87,19 +96,15 @@ public enum MeshSecurity {
 
     // MARK: Verification
 
-    /// Keeps only correctly signed items from `incoming`. `known` supplies keys already
-    /// pinned to authors, so a later item claiming the same author with another key is dropped.
+    /// Keeps only correctly signed items from `incoming`: the signature must verify and the
+    /// author id must be the one derived from the signing key. No trust-on-first-use window,
+    /// so an attacker who reaches a phone first still cannot speak for anyone else.
     public static func verify(_ incoming: MeshState, known: MeshState) -> Verdict {
-        var pinned: [String: Data] = [:]
-        for signature in known.signatures where pinned[signature.authorID] == nil {
-            pinned[signature.authorID] = signature.publicKey
-        }
         let knownIDs = Set(known.posts.map(\.id)).union(known.messages.map(\.id))
             .union(known.checkIns.map(\.id)).union(known.seismicReports.map(\.id))
 
         var signatures: [UUID: ItemSignature] = [:]
-        for signature in incoming.signatures {
-            if let key = pinned[signature.authorID], key != signature.publicKey { continue }
+        for signature in incoming.signatures where agentID(for: signature.publicKey) == signature.authorID {
             signatures[signature.itemID] = signature
         }
 
@@ -115,11 +120,6 @@ public enum MeshSecurity {
                 rejected += 1
                 return false
             }
-            if pinned[author] == nil { pinned[author] = signature.publicKey }
-            guard pinned[author] == signature.publicKey else {
-                rejected += 1
-                return false
-            }
             acceptedSignatures.append(signature)
             return true
         }
@@ -130,7 +130,8 @@ public enum MeshSecurity {
         let reports = incoming.seismicReports.filter { report in valid(report.id, author: report.deviceID) { try payload(report) } }
 
         // Approvals and completions are only trusted from the two people a proposal concerns.
-        let postAuthors = Dictionary(uniqueKeysWithValues: (known.posts + posts).map { ($0.id, $0.authorID) })
+        // Full-state gossip resends posts the receiver already has, so ids repeat here.
+        let postAuthors = Dictionary((known.posts + posts).map { ($0.id, $0.authorID) }, uniquingKeysWith: { first, _ in first })
         let proposals = incoming.proposals.compactMap { proposal -> MatchProposal? in
             guard let need = postAuthors[proposal.needID], let offer = postAuthors[proposal.offerID] else { return nil }
             let participants: Set<String> = [need, offer]
@@ -152,6 +153,10 @@ public enum MeshSecurity {
             ),
             rejected: rejected
         )
+    }
+
+    public static func agentID(for publicKey: Data) -> String {
+        "f" + SHA256.hash(data: publicKey).prefix(12).map { String(format: "%02x", $0) }.joined()
     }
 
     public static func fingerprint(of publicKey: Data) -> String {

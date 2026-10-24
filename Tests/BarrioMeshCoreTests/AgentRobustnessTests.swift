@@ -157,3 +157,20 @@ final class AgentRobustnessTests: XCTestCase {
         XCTAssertEqual(result.messages.first(where: { $0.proposalID == p2.id })?.kind, .decline)
     }
 }
+
+final class NeighborhoodSimulationTests: XCTestCase {
+    /// The evaluation harness doubles as an invariant check across many seeds.
+    func testInvariantsHoldAcrossSeeds() {
+        for seed in [UInt64(1), 7, 42] {
+            var configuration = NeighborhoodSimulation.Configuration()
+            configuration.households = 18
+            configuration.minutes = 45
+            configuration.seed = seed
+            let report = NeighborhoodSimulation(configuration: configuration).run()
+            XCTAssertEqual(report.overCommitments, 0, "seed \(seed)")
+            XCTAssertEqual(report.forgedItemsAccepted, 0, "seed \(seed)")
+            XCTAssertTrue(report.converged, "seed \(seed)")
+            XCTAssertGreaterThan(report.agreements, 0, "seed \(seed)")
+        }
+    }
+}

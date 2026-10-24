@@ -20,9 +20,9 @@ final class MeshSecurityTests: XCTestCase {
 
     func testSignedItemsAreAcceptedAndUnsignedOnesDropped() {
         let ana = AgentIdentity()
-        let good = post("ana")
-        let forged = post("ana")
-        var incoming = signed(MeshState(posts: [good]), by: "ana", ana)
+        let good = post(ana.agentID)
+        let forged = post(ana.agentID)
+        var incoming = signed(MeshState(posts: [good]), by: ana.agentID, ana)
         incoming.posts.append(forged)
 
         let verdict = MeshSecurity.verify(incoming, known: MeshState())
@@ -32,10 +32,10 @@ final class MeshSecurityTests: XCTestCase {
 
     func testTamperedContentFailsVerification() {
         let ana = AgentIdentity()
-        let original = post("ana")
-        let state = signed(MeshState(posts: [original]), by: "ana", ana)
+        let original = post(ana.agentID)
+        let state = signed(MeshState(posts: [original]), by: ana.agentID, ana)
         let tampered = MeshPost(
-            id: original.id, authorID: "ana", authorName: "Ana", kind: .need, resource: .water, quantity: 50,
+            id: original.id, authorID: ana.agentID, authorName: "Ana", kind: .need, resource: .water, quantity: 50,
             unit: "botellas", urgency: .urgent, area: "Chacao", note: "", createdAt: now, expiresAt: original.expiresAt
         )
         let verdict = MeshSecurity.verify(MeshState(posts: [tampered], signatures: state.signatures), known: MeshState())
@@ -44,26 +44,32 @@ final class MeshSecurityTests: XCTestCase {
 
     func testClosingAPostKeepsItsSignatureValid() {
         let ana = AgentIdentity()
-        var original = post("ana")
-        let state = signed(MeshState(posts: [original]), by: "ana", ana)
+        var original = post(ana.agentID)
+        let state = signed(MeshState(posts: [original]), by: ana.agentID, ana)
         original.closedAt = now
         let verdict = MeshSecurity.verify(MeshState(posts: [original], signatures: state.signatures), known: MeshState())
         XCTAssertEqual(verdict.accepted.posts.count, 1)
     }
 
-    func testImpersonationWithAnotherKeyIsRejectedOncePinned() {
+    func testNobodyCanSpeakForAnotherAgentEvenOnFirstContact() {
         let real = AgentIdentity()
         let impostor = AgentIdentity()
-        let known = signed(MeshState(posts: [post("luis", .offer)]), by: "luis", real)
 
-        // The impostor forges an "accept" from Luis with its own key.
-        let fake = AgentMessage(proposalID: "x", senderID: "luis", senderName: "Luis", kind: .accept, rationale: "", sentAt: now)
-        let attack = signed(MeshState(messages: [fake]), by: "luis", impostor)
-        XCTAssertTrue(MeshSecurity.verify(attack, known: known).accepted.messages.isEmpty)
+        // The impostor forges an "accept" from Luis with its own key, before Luis was ever seen.
+        let fake = AgentMessage(proposalID: "x", senderID: real.agentID, senderName: "Luis", kind: .accept, rationale: "", sentAt: now)
+        let attack = signed(MeshState(messages: [fake]), by: real.agentID, impostor)
+        XCTAssertTrue(MeshSecurity.verify(attack, known: MeshState()).accepted.messages.isEmpty)
 
-        // The real Luis is still trusted.
-        let genuine = signed(MeshState(messages: [fake]), by: "luis", real)
-        XCTAssertEqual(MeshSecurity.verify(genuine, known: known).accepted.messages.count, 1)
+        // The real Luis is trusted, with no pinning needed.
+        let genuine = signed(MeshState(messages: [fake]), by: real.agentID, real)
+        XCTAssertEqual(MeshSecurity.verify(genuine, known: MeshState()).accepted.messages.count, 1)
+    }
+
+    func testAgentIDsAreDerivedFromKeys() {
+        let identity = AgentIdentity()
+        XCTAssertEqual(identity.agentID, MeshSecurity.agentID(for: identity.publicKey))
+        XCTAssertNotEqual(identity.agentID, AgentIdentity().agentID)
+        XCTAssertEqual(AgentIdentity.deterministic(seed: "luis").agentID, AgentIdentity.deterministic(seed: "luis").agentID)
     }
 
     func testApprovalsFromOutsidersAreStripped() {
@@ -118,5 +124,19 @@ final class MeshSecurityTests: XCTestCase {
         let restored = try AgentIdentity(rawRepresentation: identity.privateKey.rawRepresentation)
         XCTAssertEqual(restored.publicKey, identity.publicKey)
         XCTAssertEqual(identity.fingerprint.count, 11)
+    }
+
+    func testResendingKnownStateDoesNotCrashAndIsIdempotent() {
+        // Regression: full-state gossip always resends known posts; verify used to trap on duplicate ids.
+        let ana = AgentIdentity()
+        let need = post(ana.agentID)
+        let offer = post(ana.agentID, .offer)
+        let state = signed(MeshState(posts: [need, offer], proposals: [MatchProposal(needID: need.id, offerID: offer.id)]), by: ana.agentID, ana)
+        let store = MeshStore()
+        store.merge(MeshSecurity.verify(state, known: store.state).accepted, now: now)
+
+        let again = MeshSecurity.verify(store.state, known: store.state)
+        XCTAssertEqual(again.rejected, 0)
+        XCTAssertFalse(store.merge(again.accepted, now: now))
     }
 }

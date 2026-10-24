@@ -552,7 +552,7 @@ public struct PersonalAgent: Sendable {
         let state = Self.overlay(state, with: result)
 
         // As receiver: one open negotiation per need; keep asking until the need is covered.
-        for candidate in candidates where candidate.need.authorID == selfID {
+        for candidate in receiverOrder(candidates, state: state, memory: result.memory) {
             let negotiation = state.negotiation(for: candidate.id)
             if let offer = negotiation.openOffer,
                offer.senderID != selfID,
@@ -567,7 +567,7 @@ public struct PersonalAgent: Sendable {
                   !proposedThisStep.contains(candidate.need.id),
                   !hasOpenNegotiation(for: candidate.need, in: state) else { continue }
             let remaining = candidate.need.quantity - receivedQuantity(for: candidate.need, in: state)
-            let available = candidate.offer.quantity - committedQuantity(for: candidate.offer, in: state)
+            let available = candidate.offer.quantity - committedQuantity(for: candidate.offer, in: state, memory: result.memory)
             guard remaining > 0, available > 0 else { continue }
             propose(candidate, quantity: min(remaining, available), alreadyCovered: candidate.need.quantity - remaining, result: &result, now: now)
             proposedThisStep.insert(candidate.need.id)
@@ -591,10 +591,39 @@ public struct PersonalAgent: Sendable {
             }
 
         for (candidate, offer) in incoming {
-            let alreadyCommitted = committedQuantity(for: candidate.offer, in: state) + committedNow[candidate.offer.id, default: 0]
+            let alreadyCommitted = committedQuantity(for: candidate.offer, in: state, memory: result.memory) + committedNow[candidate.offer.id, default: 0]
             let given = respondAsGiver(candidate, offer: offer, available: candidate.offer.quantity - alreadyCommitted, prioritized: incoming.count > 1, result: &result, now: now)
             committedNow[candidate.offer.id, default: 0] += given
         }
+    }
+
+    /// Orders this agent's own matches so neighbors do not all pile onto the same giver:
+    /// first offers that can cover the whole need, then the least contested ones, then a
+    /// per-need pseudo-random tiebreak so different agents spread out.
+    private func receiverOrder(_ candidates: [MatchCandidate], state: MeshState, memory: AgentMemory) -> [MatchCandidate] {
+        let mine = candidates.filter { $0.need.authorID == selfID }
+        var contested: [UUID: Int] = [:]
+        for proposal in state.proposals {
+            let negotiation = state.negotiation(for: proposal.id)
+            if !negotiation.messages.isEmpty, !negotiation.isDeclined, negotiation.agreedTerms == nil {
+                contested[proposal.offerID, default: 0] += 1
+            }
+        }
+        func key(_ candidate: MatchCandidate) -> (Int, Int, Int, UInt64) {
+            let available = candidate.offer.quantity - committedQuantity(for: candidate.offer, in: state, memory: memory)
+            let remaining = candidate.need.quantity - receivedQuantity(for: candidate.need, in: state)
+            return (
+                -candidate.need.urgency.rawValue,
+                available >= remaining ? 0 : 1,
+                contested[candidate.offer.id, default: 0],
+                Self.spread(candidate.need.id, candidate.offer.id)
+            )
+        }
+        return mine.sorted { key($0) < key($1) }
+    }
+
+    static func spread(_ a: UUID, _ b: UUID) -> UInt64 {
+        (a.uuidString + b.uuidString).utf8.reduce(UInt64(14_695_981_039_346_656_037)) { ($0 ^ UInt64($1)) &* 1_099_511_628_211 }
     }
 
     /// Proposals this agent sent that nobody answered in time are withdrawn, freeing the need.
@@ -780,12 +809,23 @@ public struct PersonalAgent: Sendable {
         result.memory.pending.append(PendingApproval(id: key, createdAt: now, title: title, detail: detail, action: action))
     }
 
-    /// Units of an offer already promised in agreed negotiations.
-    private func committedQuantity(for offerPost: MeshPost, in state: MeshState) -> Int {
-        state.proposals
-            .filter { $0.offerID == offerPost.id }
-            .compactMap { state.negotiation(for: $0.id).agreedTerms?.quantity }
-            .reduce(0, +)
+    /// Units of an offer already spoken for: agreed handoffs, counters its author sent that are
+    /// still awaiting an answer, and answers waiting for the person's approval.
+    private func committedQuantity(for offerPost: MeshPost, in state: MeshState, memory: AgentMemory) -> Int {
+        let proposals = state.proposals.filter { $0.offerID == offerPost.id }
+        let agreedOrOffered = proposals.compactMap { proposal -> Int? in
+            let negotiation = state.negotiation(for: proposal.id)
+            if let agreed = negotiation.agreedTerms { return agreed.quantity }
+            guard !negotiation.isDeclined, let open = negotiation.openOffer, open.senderID == offerPost.authorID else { return nil }
+            return open.terms?.quantity
+        }
+        let proposalIDs = Set(proposals.map(\.id))
+        let awaitingApproval = memory.pending.compactMap { pending -> Int? in
+            guard case let .send(message) = pending.action, proposalIDs.contains(message.proposalID),
+                  message.kind == .accept || message.kind == .counter else { return nil }
+            return message.terms?.quantity
+        }
+        return (agreedOrOffered + awaitingApproval).reduce(0, +)
     }
 
     // MARK: - Agreements and follow-ups
