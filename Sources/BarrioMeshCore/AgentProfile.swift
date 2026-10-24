@@ -75,12 +75,12 @@ public enum Country: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .colombia: "Colombia"
         case .venezuela: "Venezuela"
-        case .mexico: "México"
+        case .mexico: t("México", "Mexico")
         case .chile: "Chile"
-        case .peru: "Perú"
+        case .peru: t("Perú", "Peru")
         case .ecuador: "Ecuador"
         case .argentina: "Argentina"
-        case .unitedStates: "Estados Unidos"
+        case .unitedStates: t("Estados Unidos", "United States")
         }
     }
 
@@ -199,31 +199,31 @@ enum Preparedness {
             score += 30
         } else {
             score += water * 30 / max(1, waterTarget)
-            gaps.append("Agua: tienes \(water) de \(waterTarget) botellas recomendadas para 3 días.")
+            gaps.append(t("Agua: tienes \(water) de \(waterTarget) botellas para 3 días.", "Water: \(water) of \(waterTarget) bottles for 3 days."))
         }
 
         if profile.supplies.contains(where: { $0.resource == .power && $0.quantity > 0 }) {
             score += 15
         } else {
-            gaps.append("Sin batería externa: el teléfono es tu único canal con la familia.")
+            gaps.append(t("Sin batería externa.", "No power bank."))
         }
 
         if profile.supplies.contains(where: { $0.resource == .firstAid && $0.quantity > 0 }) {
             score += 15
         } else {
-            gaps.append("Falta un botiquín de primeros auxilios.")
+            gaps.append(t("Falta un botiquín.", "No first aid kit."))
         }
 
         if profile.familyCircleID != nil {
             score += 20
         } else {
-            gaps.append("Crea un código de familia para recibir sus “estoy bien” sin internet.")
+            gaps.append(t("Sin código de familia.", "No family code yet."))
         }
 
         if !profile.familyContacts.isEmpty {
             score += 10
         } else {
-            gaps.append("Agrega al menos un contacto de familia para avisarle cuando vuelva la señal.")
+            gaps.append(t("Sin contacto de familia.", "No family contact."))
         }
 
         let dependents = profile.household.filter { !$0.dependsOn.isEmpty }
@@ -237,7 +237,7 @@ enum Preparedness {
         } else {
             for member in uncovered {
                 let names = member.dependsOn.map(\.displayName).joined(separator: ", ").lowercased()
-                gaps.append("\(member.name) depende de \(names): conviene tener reserva.")
+                gaps.append(t("\(member.name) depende de \(names): ten reserva.", "\(member.name) relies on \(names): keep a reserve."))
             }
         }
 
