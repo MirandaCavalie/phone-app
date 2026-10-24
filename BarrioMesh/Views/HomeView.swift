@@ -395,7 +395,7 @@ private struct FamilyStrip: View {
                     Circle()
                         .fill(checkIn.status == .safe ? FaroTheme.safe : FaroTheme.ember)
                         .frame(width: 8, height: 8)
-                    Text("\(checkIn.authorName): \(checkIn.status.displayName.lowercased())")
+                    Text("\(checkIn.authorName): \(checkIn.status.inlineName)")
                         .font(.subheadline)
                         .lineLimit(1)
                     Spacer(minLength: 0)

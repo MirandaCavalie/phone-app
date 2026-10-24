@@ -53,6 +53,8 @@
 		100000000000000000000031 /* AlertsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000031 /* AlertsView.swift */; };
 		100000000000000000000032 /* ProactiveAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000032 /* ProactiveAgent.swift */; };
 		100000000000000000000033 /* DailyAssistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000033 /* DailyAssistant.swift */; };
+		100000000000000000000034 /* TrustedPeople.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000034 /* TrustedPeople.swift */; };
+		100000000000000000000035 /* TrustedPeopleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000035 /* TrustedPeopleViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -107,6 +109,8 @@
 		200000000000000000000031 /* AlertsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertsView.swift; sourceTree = "<group>"; };
 		200000000000000000000032 /* ProactiveAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveAgent.swift; sourceTree = "<group>"; };
 		200000000000000000000033 /* DailyAssistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyAssistant.swift; sourceTree = "<group>"; };
+		200000000000000000000034 /* TrustedPeople.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedPeople.swift; sourceTree = "<group>"; };
+		200000000000000000000035 /* TrustedPeopleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedPeopleViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -157,6 +161,7 @@
 		400000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000035 /* TrustedPeopleViews.swift */,
 				200000000000000000000031 /* AlertsView.swift */,
 				20000000000000000000002E /* MemberViews.swift */,
 				20000000000000000000002A /* MeshRadarView.swift */,
@@ -189,6 +194,7 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000034 /* TrustedPeople.swift */,
 				200000000000000000000032 /* ProactiveAgent.swift */,
 				200000000000000000000030 /* HazardFeeds.swift */,
 				20000000000000000000002F /* FamilyCare.swift */,
@@ -311,6 +317,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				100000000000000000000035 /* TrustedPeopleViews.swift in Sources */,
+				100000000000000000000034 /* TrustedPeople.swift in Sources */,
 				100000000000000000000033 /* DailyAssistant.swift in Sources */,
 				100000000000000000000032 /* ProactiveAgent.swift in Sources */,
 				100000000000000000000031 /* AlertsView.swift in Sources */,

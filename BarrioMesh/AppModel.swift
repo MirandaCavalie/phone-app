@@ -144,6 +144,10 @@ final class AppModel: ObservableObject {
         if ProcessInfo.processInfo.arguments.contains("-faro-demo"), profile.isConfigured {
             startSimulatedNeighbors()
         }
+        // Rehearsal shortcut: `-faro-trust` invites the simulated neighbor as a trusted person.
+        if ProcessInfo.processInfo.arguments.contains("-faro-trust"), let neighbor = nearbyAgents.first(where: { $0.name.hasPrefix("Luis") }) {
+            inviteTrusted(id: neighbor.id, name: neighbor.name, sharing: [.safety, .whereabouts, .medical, .priorityHelp])
+        }
         // Rehearsal shortcut: `-faro-alert` plays an official USGS alert near home.
         if ProcessInfo.processInfo.arguments.contains("-faro-alert"), profile.isConfigured {
             simulateOfficialAlert()
@@ -157,7 +161,7 @@ final class AppModel: ObservableObject {
     // MARK: - Agent
 
     var agent: PersonalAgent {
-        PersonalAgent(selfID: deviceID, profile: profile, policy: policy)
+        PersonalAgent(selfID: deviceID, profile: profile, policy: policy, agreementSecret: identity.agreementPrivateKey.rawRepresentation)
     }
 
     var effectiveConnectivity: Connectivity {
@@ -314,7 +318,7 @@ final class AppModel: ObservableObject {
 
     private func commit(_ result: AgentStepResult) {
         if result.changesMesh,
-           store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns) {
+           store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns, trustMessages: result.trustMessages) {
             publishChange()
         }
         if result.memory != memory {
@@ -402,6 +406,37 @@ final class AppModel: ObservableObject {
     func dismiss(_ suggestion: Suggestion) {
         memory.dismissedKeys.insert(suggestion.id)
         save(memory, to: Self.memoryURL)
+    }
+
+    // MARK: - Trusted people
+
+    /// Agents seen on the mesh (signed posts, check-ins, alerts) who are not yet trusted.
+    var nearbyAgents: [(id: String, name: String)] {
+        var names: [String: String] = [:]
+        for post in meshState.posts { names[post.authorID] = post.authorName }
+        for message in meshState.messages { names[message.senderID] = message.senderName }
+        for message in meshState.trustMessages { names[message.from] = message.fromName }
+        for demo in demoNeighbors { names[demo.agent.selfID] = demo.agent.profile.name }
+        let trusted = Set(memory.trusted.filter { $0.status != .revoked }.map(\.agentID))
+        return names
+            .filter { $0.key != deviceID && !trusted.contains($0.key) }
+            .map { (id: $0.key, name: $0.value) }
+            .sorted { $0.name < $1.name }
+    }
+
+    func inviteTrusted(id: String, name: String, sharing: Set<TrustScope> = TrustScope.defaults) {
+        commit(agent.invite(agentID: id, name: name, sharing: sharing, memory: memory, now: Date()))
+        runAgent()
+    }
+
+    func revokeTrusted(_ person: TrustedPerson) {
+        commit(agent.revoke(agentID: person.agentID, memory: memory, now: Date()))
+    }
+
+    func setSharing(_ scopes: Set<TrustScope>, for person: TrustedPerson) {
+        memory = agent.updateSharing(agentID: person.agentID, sharing: scopes, memory: memory)
+        save(memory, to: Self.memoryURL)
+        runAgent()
     }
 
     // MARK: - Paperwork
@@ -560,7 +595,8 @@ final class AppModel: ObservableObject {
                     Supply(id: Self.demoID(3), resource: .transport, quantity: 3)
                 ]
             ),
-            policy: AgentPolicy(autoGiveLimit: 10)
+            policy: AgentPolicy(autoGiveLimit: 10),
+            agreementSecret: luisIdentity.agreementPrivateKey.rawRepresentation
         )
         var family = AgentProfile(
             name: "\(profile.household.first?.name ?? t("Mamá", "Mom")) \(t("(simulado)", "(simulated)"))",
@@ -569,7 +605,7 @@ final class AppModel: ObservableObject {
             familyCircleCode: profile.familyCircleCode
         )
         family.standingNeeds = []
-        let relative = PersonalAgent(selfID: familyIdentity.agentID, profile: family, policy: AgentPolicy())
+        let relative = PersonalAgent(selfID: familyIdentity.agentID, profile: family, policy: AgentPolicy(), agreementSecret: familyIdentity.agreementPrivateKey.rawRepresentation)
 
         let now = Date()
         demoIdentities = [luis.selfID: luisIdentity, relative.selfID: familyIdentity]
@@ -594,10 +630,16 @@ final class AppModel: ObservableObject {
             var changed = false
             for index in demoNeighbors.indices {
                 let neighbor = demoNeighbors[index]
-                let result = neighbor.agent.step(state: store.state, memory: neighbor.memory, connectivity: .offline, now: now)
+                var result = neighbor.agent.step(state: store.state, memory: neighbor.memory, connectivity: .offline, now: now)
+                // Simulated people say yes to trust invitations, so the flow can be shown on one phone.
+                for pending in result.memory.pending where pending.id.hasPrefix("trust:") {
+                    let approved = neighbor.agent.approve(pending.id, state: store.state, memory: result.memory, now: now)
+                    result.memory = approved.memory
+                    result.trustMessages += approved.trustMessages
+                }
                 demoNeighbors[index].memory = result.memory
                 if result.changesMesh,
-                   store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns) {
+                   store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns, trustMessages: result.trustMessages) {
                     changed = true
                 }
             }

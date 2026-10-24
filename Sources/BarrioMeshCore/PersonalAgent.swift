@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 public enum Connectivity: String, Codable, Sendable {
@@ -25,6 +26,11 @@ public struct AgentMemory: Codable, Equatable, Sendable {
     public var seenHazards: Set<String>
     /// When the agent last worked out where each relative probably is.
     public var familyLocatedAt: Date?
+    /// People whose agents this agent coordinates with directly.
+    public var trusted: [TrustedPerson]
+    /// The latest decrypted snapshot from each trusted person, by agent id.
+    public var trustedUpdates: [String: TrustedUpdate]
+    public var handledTrustMessages: Set<UUID>
 
     public init() {
         emergencyActive = false
@@ -41,7 +47,12 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         lastConnectivity = nil
         seenHazards = []
         familyLocatedAt = nil
+        trusted = []
+        trustedUpdates = [:]
+        handledTrustMessages = []
     }
+
+    public var activeTrusted: [TrustedPerson] { trusted.filter { $0.status == .active } }
 
     public init(from decoder: Decoder) throws {
         // Memory saved by an older build keeps working when new fields are added.
@@ -60,6 +71,9 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         lastConnectivity = try c.decodeIfPresent(Connectivity.self, forKey: .lastConnectivity)
         seenHazards = try c.decodeIfPresent(Set<String>.self, forKey: .seenHazards) ?? []
         familyLocatedAt = try c.decodeIfPresent(Date.self, forKey: .familyLocatedAt)
+        trusted = try c.decodeIfPresent([TrustedPerson].self, forKey: .trusted) ?? []
+        trustedUpdates = try c.decodeIfPresent([String: TrustedUpdate].self, forKey: .trustedUpdates) ?? [:]
+        handledTrustMessages = try c.decodeIfPresent(Set<UUID>.self, forKey: .handledTrustMessages) ?? []
     }
 
     public var unsentOutbox: [OutboxItem] { outbox.filter { $0.sentAt == nil } }
@@ -125,6 +139,7 @@ public enum AgentAction: Codable, Equatable, Sendable {
     case send(AgentMessage)
     case checkIn(SafetyCheckIn)
     case complete(proposalID: String)
+    case acceptTrust(TrustMessage)
 }
 
 public struct FollowUp: Codable, Equatable, Identifiable, Sendable {
@@ -185,6 +200,7 @@ public struct AgentStepResult: Sendable {
     public var proposals: [MatchProposal] = []
     public var messages: [AgentMessage] = []
     public var checkIns: [SafetyCheckIn] = []
+    public var trustMessages: [TrustMessage] = []
     public var memory: AgentMemory
 
     public init(memory: AgentMemory) {
@@ -192,7 +208,7 @@ public struct AgentStepResult: Sendable {
     }
 
     public var changesMesh: Bool {
-        !posts.isEmpty || !proposals.isEmpty || !messages.isEmpty || !checkIns.isEmpty
+        !posts.isEmpty || !proposals.isEmpty || !messages.isEmpty || !checkIns.isEmpty || !trustMessages.isEmpty
     }
 
     mutating func perform(_ action: AgentAction, now: Date) {
@@ -205,7 +221,7 @@ public struct AgentStepResult: Sendable {
         case let .checkIn(checkIn):
             checkIns.append(checkIn)
             memory.checkedInAt = now
-        case .complete:
+        case .complete, .acceptTrust:
             break
         }
     }
@@ -222,12 +238,19 @@ public struct PersonalAgent: Sendable {
     /// The calendar (and time zone) routines are read in. Injected so behavior never
     /// depends on the device's or the CI runner's time zone.
     public var calendar: Calendar
+    /// Raw X25519 key for sealing and opening trusted-person shares (from `AgentIdentity`).
+    public var agreementSecret: Data?
 
-    public init(selfID: String, profile: AgentProfile, policy: AgentPolicy, calendar: Calendar = .current) {
+    public init(selfID: String, profile: AgentProfile, policy: AgentPolicy, calendar: Calendar = .current, agreementSecret: Data? = nil) {
         self.selfID = selfID
         self.profile = profile
         self.policy = policy
         self.calendar = calendar
+        self.agreementSecret = agreementSecret
+    }
+
+    var agreementKey: Curve25519.KeyAgreement.PrivateKey? {
+        agreementSecret.flatMap { try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: $0) }
     }
 
     private var displayName: String {
@@ -269,9 +292,12 @@ public struct PersonalAgent: Sendable {
         observeSeismicReports(state.seismicReports, result: &result, now: now)
         observeHazardAlerts(state.hazardAlerts, result: &result, now: now)
 
+        processTrustMessages(state.trustMessages, result: &result, now: now)
+
         if result.memory.emergencyActive {
             locateFamily(result: &result, now: now)
             checkIn(result: &result, now: now)
+            shareWithTrusted(state: state, result: &result, now: now)
             publishFromProfile(state: state, result: &result, now: now)
         }
 
@@ -298,6 +324,8 @@ public struct PersonalAgent: Sendable {
                 proposal.completions.insert(selfID)
                 result.proposals.append(proposal)
             }
+        case let .acceptTrust(invite):
+            acceptTrust(invite, result: &result, now: now)
         case .publish, .send, .checkIn:
             result.perform(pending.action, now: now)
         }
@@ -329,7 +357,7 @@ public struct PersonalAgent: Sendable {
         result.memory.record(ActivityEntry(
             date: now,
             kind: .checkIn,
-            title: t("Avisé a tu familia: \(status.displayName.lowercased())", "Told your family: \(status.displayName)"),
+            title: t("Avisé a tu familia: \(status.inlineName)", "Told your family: \(status.displayName)"),
             detail: t("Viaja de teléfono en teléfono, cifrado.", "Hops phone to phone, encrypted.")
         ))
         prepareFamilyMessages(result: &result, now: now)
@@ -434,6 +462,174 @@ public struct PersonalAgent: Sendable {
                     now: now
                 )
             }
+        }
+    }
+
+    // MARK: - Trusted people
+
+    /// Invites a nearby agent to become a trusted person. Nothing is shared until they accept.
+    public func invite(agentID: String, name: String, sharing: Set<TrustScope> = TrustScope.defaults, memory: AgentMemory, now: Date) -> AgentStepResult {
+        var result = AgentStepResult(memory: memory)
+        guard let key = agreementKey, agentID != selfID,
+              !memory.trusted.contains(where: { $0.agentID == agentID && $0.status != .revoked }) else { return result }
+        result.trustMessages.append(TrustMessage(
+            kind: .invite, from: selfID, fromName: displayName, to: agentID,
+            agreementKey: key.publicKey.rawRepresentation, scopes: sharing, sentAt: now
+        ))
+        result.memory.trusted.removeAll { $0.agentID == agentID }
+        result.memory.trusted.append(TrustedPerson(
+            agentID: agentID, name: name, agreementKey: Data(), status: .invited,
+            sharing: sharing, theyShare: [], since: now, pairingCode: "", lastSharedAt: nil
+        ))
+        result.memory.record(ActivityEntry(
+            date: now, kind: .family,
+            title: t("Invité a \(name) como persona de confianza", "Invited \(name) as a trusted person"),
+            detail: t("Esperando que su agente acepte.", "Waiting for their agent to accept.")
+        ))
+        return result
+    }
+
+    public func revoke(agentID: String, memory: AgentMemory, now: Date) -> AgentStepResult {
+        var result = AgentStepResult(memory: memory)
+        guard let index = memory.trusted.firstIndex(where: { $0.agentID == agentID }), let key = agreementKey else { return result }
+        result.memory.trusted[index].status = .revoked
+        result.memory.trustedUpdates[agentID] = nil
+        result.trustMessages.append(TrustMessage(kind: .revoke, from: selfID, fromName: displayName, to: agentID, agreementKey: key.publicKey.rawRepresentation, sentAt: now))
+        result.memory.record(ActivityEntry(date: now, kind: .family, title: t("Dejé de confiar en \(memory.trusted[index].name)", "Stopped trusting \(memory.trusted[index].name)")))
+        return result
+    }
+
+    public func updateSharing(agentID: String, sharing: Set<TrustScope>, memory: AgentMemory) -> AgentMemory {
+        var memory = memory
+        if let index = memory.trusted.firstIndex(where: { $0.agentID == agentID }) {
+            memory.trusted[index].sharing = sharing
+            memory.trusted[index].lastSharedAt = nil
+        }
+        return memory
+    }
+
+    private func acceptTrust(_ invite: TrustMessage, result: inout AgentStepResult, now: Date) {
+        guard let key = agreementKey else { return }
+        let mine = key.publicKey.rawRepresentation
+        let code = TrustNetwork.pairingCode(mine, invite.agreementKey)
+        result.trustMessages.append(TrustMessage(
+            kind: .accept, from: selfID, fromName: displayName, to: invite.from,
+            agreementKey: mine, scopes: TrustScope.defaults, sentAt: now
+        ))
+        result.memory.trusted.removeAll { $0.agentID == invite.from }
+        result.memory.trusted.append(TrustedPerson(
+            agentID: invite.from, name: invite.fromName, agreementKey: invite.agreementKey, status: .active,
+            sharing: TrustScope.defaults, theyShare: invite.scopes, since: now, pairingCode: code, lastSharedAt: nil
+        ))
+        result.memory.record(ActivityEntry(
+            date: now, kind: .family,
+            title: t("\(invite.fromName) ahora es de confianza", "\(invite.fromName) is now trusted"),
+            detail: t("Código de emparejamiento \(code). Compáralo en ambos teléfonos.", "Pairing code \(code). Compare it on both phones.")
+        ))
+    }
+
+    private func processTrustMessages(_ messages: [TrustMessage], result: inout AgentStepResult, now: Date) {
+        for message in messages.sorted(by: { $0.sentAt < $1.sentAt })
+        where message.to == selfID && !result.memory.handledTrustMessages.contains(message.id) {
+            result.memory.handledTrustMessages.insert(message.id)
+            let index = result.memory.trusted.firstIndex { $0.agentID == message.from }
+
+            switch message.kind {
+            case .invite:
+                if let index, result.memory.trusted[index].status == .active { continue }
+                let code = agreementKey.map { TrustNetwork.pairingCode($0.publicKey.rawRepresentation, message.agreementKey) } ?? "------"
+                result.memory.pending.append(PendingApproval(
+                    id: "trust:\(message.id.uuidString)",
+                    createdAt: now,
+                    title: t("¿\(message.fromName) como persona de confianza?", "Add \(message.fromName) as a trusted person?"),
+                    detail: t("Código \(code). Compara que sea igual en su teléfono. Compartirá: ", "Code \(code). Check it matches on their phone. They share: ")
+                        + message.scopes.sorted { $0.rawValue < $1.rawValue }.map(\.displayName).joined(separator: ", "),
+                    action: .acceptTrust(message)
+                ))
+            case .accept:
+                guard let index, result.memory.trusted[index].status == .invited, let key = agreementKey else { continue }
+                result.memory.trusted[index].status = .active
+                result.memory.trusted[index].agreementKey = message.agreementKey
+                result.memory.trusted[index].theyShare = message.scopes
+                result.memory.trusted[index].name = message.fromName
+                let code = TrustNetwork.pairingCode(key.publicKey.rawRepresentation, message.agreementKey)
+                result.memory.trusted[index].pairingCode = code
+                result.memory.record(ActivityEntry(
+                    date: now, kind: .family,
+                    title: t("\(message.fromName) aceptó tu confianza", "\(message.fromName) accepted your trust"),
+                    detail: t("Código \(code). Compáralo en ambos teléfonos.", "Code \(code). Compare it on both phones.")
+                ))
+            case .revoke:
+                guard let index else { continue }
+                result.memory.trusted[index].status = .revoked
+                result.memory.trustedUpdates[message.from] = nil
+                result.memory.record(ActivityEntry(date: now, kind: .family, title: t("\(message.fromName) dejó de compartir contigo", "\(message.fromName) stopped sharing with you")))
+            case .share:
+                guard let index, result.memory.trusted[index].status == .active,
+                      result.memory.trusted[index].agreementKey == message.agreementKey,
+                      let key = agreementKey,
+                      let update = TrustNetwork.open(message, me: selfID, with: key) else { continue }
+                result.memory.trustedUpdates[message.from] = update
+                var detail = update.area
+                if let away = update.household.first(where: { $0.location != nil }) {
+                    detail += " · \(away.name): \(away.location ?? "")"
+                }
+                if !update.needs.isEmpty { detail += t(" · necesita ", " · needs ") + update.needs.joined(separator: ", ") }
+                result.memory.record(ActivityEntry(
+                    date: now, kind: .family,
+                    title: "\(update.fromName): \(update.status?.inlineName ?? t("sin estado", "no status"))",
+                    detail: detail
+                ))
+            }
+        }
+    }
+
+    /// In an emergency, each trusted person's agent gets exactly what they were allowed to see,
+    /// sealed for them alone. Refreshed every 30 minutes.
+    private func shareWithTrusted(state: MeshState, result: inout AgentStepResult, now: Date) {
+        guard let key = agreementKey else { return }
+        let started = result.memory.emergencyStartedAt ?? now
+        let latestStatus = (state.checkIns + result.checkIns)
+            .filter { $0.authorID == selfID }
+            .max(by: { $0.createdAt < $1.createdAt })?
+            .opened(withCircleCode: profile.familyCircleCode)?.status
+
+        for index in result.memory.trusted.indices {
+            let person = result.memory.trusted[index]
+            guard person.status == .active, !person.sharing.isEmpty else { continue }
+            if let last = person.lastSharedAt, last >= started, now.timeIntervalSince(last) < 30 * 60 { continue }
+
+            let household = profile.household.map { member -> TrustedUpdate.Relative in
+                let location = FamilyLocator.likelyLocation(of: member, at: now, homeArea: profile.homeArea, calendar: calendar)
+                return TrustedUpdate.Relative(
+                    name: member.name,
+                    relation: member.relation,
+                    location: person.sharing.contains(.whereabouts) ? location.description : nil,
+                    medical: person.sharing.contains(.medical) && !member.medical.isEmpty ? member.medical.summary : nil
+                )
+            }
+            let needs = (state.posts + result.posts)
+                .filter { $0.authorID == selfID && $0.kind == .need && $0.isActive(at: now) }
+                .map { $0.resource.amount($0.quantity) }
+            let update = TrustedUpdate(
+                fromName: displayName,
+                status: person.sharing.contains(.safety) ? (latestStatus ?? .safe) : nil,
+                area: profile.homeArea,
+                household: person.sharing.contains(.whereabouts) || person.sharing.contains(.medical) ? household : [],
+                needs: person.sharing.contains(.priorityHelp) ? needs : [],
+                sentAt: now
+            )
+            guard let sealed = TrustNetwork.seal(update, from: selfID, to: person, with: key) else { continue }
+            result.trustMessages.append(TrustMessage(
+                kind: .share, from: selfID, fromName: displayName, to: person.agentID,
+                agreementKey: key.publicKey.rawRepresentation, sealed: sealed, sentAt: now
+            ))
+            result.memory.trusted[index].lastSharedAt = now
+            result.memory.record(ActivityEntry(
+                date: now, kind: .checkIn,
+                title: t("Compartí tu estado con \(person.name)", "Shared your status with \(person.name)"),
+                detail: t("Cifrado solo para su agente.", "Encrypted for their agent only.")
+            ))
         }
     }
 
@@ -646,6 +842,7 @@ public struct PersonalAgent: Sendable {
 
     private func negotiate(state: MeshState, result: inout AgentStepResult, now: Date) {
         let candidates = MatchEngine.candidates(in: state.posts, at: now)
+        let trustedForPriority = Set(result.memory.activeTrusted.filter { $0.sharing.contains(.priorityHelp) }.map(\.agentID))
         // Units this agent commits during this step, so two requests answered together
         // can never promise more than the offer holds.
         var committedNow: [UUID: Int] = [:]
@@ -689,6 +886,9 @@ public struct PersonalAgent: Sendable {
                 return (candidate, offer)
             }
             .sorted {
+                // People we promised priority help to come first, then urgency, then who asked first.
+                let a = trustedForPriority.contains($0.0.need.authorID), b = trustedForPriority.contains($1.0.need.authorID)
+                if a != b { return a }
                 if $0.0.need.urgency != $1.0.need.urgency { return $0.0.need.urgency.rawValue > $1.0.need.urgency.rawValue }
                 return $0.1.sentAt < $1.1.sentAt
             }
@@ -1002,7 +1202,7 @@ public struct PersonalAgent: Sendable {
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .family,
-                title: "\(checkIn.authorName): \(checkIn.status.displayName.lowercased())",
+                title: "\(checkIn.authorName): \(checkIn.status.inlineName)",
                 detail: "\(checkIn.area) · \(Self.timeFormatter.string(from: checkIn.createdAt)) · \(t("por la red de vecinos", "via nearby phones"))"
             ))
         }
@@ -1013,7 +1213,7 @@ public struct PersonalAgent: Sendable {
     /// The shared state as it will look once this step's decisions are applied.
     static func overlay(_ state: MeshState, with result: AgentStepResult) -> MeshState {
         let store = MeshStore(initialState: state)
-        store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns)
+        store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns, trustMessages: result.trustMessages)
         return store.state
     }
 

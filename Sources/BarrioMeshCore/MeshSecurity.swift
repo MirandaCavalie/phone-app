@@ -92,6 +92,7 @@ public enum MeshSecurity {
         for checkIn in state.checkIns where checkIn.authorID == authorID { add(checkIn.id) { try payload(checkIn) } }
         for report in state.seismicReports where report.deviceID == authorID { add(report.id) { try payload(report) } }
         for alert in state.hazardAlerts where alert.relayedBy == authorID { add(alert.id) { try payload(alert) } }
+        for message in state.trustMessages where message.from == authorID { add(message.id) { try payload(message) } }
         return result
     }
 
@@ -102,7 +103,7 @@ public enum MeshSecurity {
     /// so an attacker who reaches a phone first still cannot speak for anyone else.
     public static func verify(_ incoming: MeshState, known: MeshState) -> Verdict {
         let knownIDs = Set(known.posts.map(\.id)).union(known.messages.map(\.id))
-            .union(known.checkIns.map(\.id)).union(known.seismicReports.map(\.id)).union(known.hazardAlerts.map(\.id))
+            .union(known.checkIns.map(\.id)).union(known.seismicReports.map(\.id)).union(known.hazardAlerts.map(\.id)).union(known.trustMessages.map(\.id))
 
         var signatures: [UUID: ItemSignature] = [:]
         for signature in incoming.signatures where agentID(for: signature.publicKey) == signature.authorID {
@@ -130,6 +131,7 @@ public enum MeshSecurity {
         let checkIns = incoming.checkIns.filter { checkIn in valid(checkIn.id, author: checkIn.authorID) { try payload(checkIn) } }
         let reports = incoming.seismicReports.filter { report in valid(report.id, author: report.deviceID) { try payload(report) } }
         let alerts = incoming.hazardAlerts.filter { alert in valid(alert.id, author: alert.relayedBy) { try payload(alert) } }
+        let trust = incoming.trustMessages.filter { message in valid(message.id, author: message.from) { try payload(message) } }
 
         // Approvals and completions are only trusted from the two people a proposal concerns.
         // Full-state gossip resends posts the receiver already has, so ids repeat here.
@@ -152,7 +154,8 @@ public enum MeshSecurity {
                 checkIns: checkIns,
                 seismicReports: reports,
                 signatures: acceptedSignatures,
-                hazardAlerts: alerts
+                hazardAlerts: alerts,
+                trustMessages: trust
             ),
             rejected: rejected
         )
