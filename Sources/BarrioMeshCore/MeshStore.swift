@@ -97,6 +97,7 @@ public final class MeshStore: @unchecked Sendable {
             changed = Self.union(&storedState.seismicReports, with: incoming.seismicReports) || changed
             changed = Self.union(&storedState.signatures, with: incoming.signatures) || changed
             changed = Self.unionHazards(&storedState.hazardAlerts, with: incoming.hazardAlerts) || changed
+            changed = Self.union(&storedState.trustMessages, with: incoming.trustMessages) || changed
 
             if changed { persistLocked() }
             return changed
@@ -161,7 +162,7 @@ public final class MeshStore: @unchecked Sendable {
 
     /// Applies everything an agent step decided, persisting once.
     @discardableResult
-    public func apply(posts: [MeshPost], proposals: [MatchProposal], messages: [AgentMessage], checkIns: [SafetyCheckIn]) -> Bool {
+    public func apply(posts: [MeshPost], proposals: [MatchProposal], messages: [AgentMessage], checkIns: [SafetyCheckIn], trustMessages: [TrustMessage] = []) -> Bool {
         lock.withLock {
             var changed = false
             for post in posts where !storedState.posts.contains(where: { $0.id == post.id }) {
@@ -182,6 +183,7 @@ public final class MeshStore: @unchecked Sendable {
             }
             changed = Self.union(&storedState.messages, with: messages) || changed
             changed = Self.union(&storedState.checkIns, with: checkIns) || changed
+            changed = Self.union(&storedState.trustMessages, with: trustMessages) || changed
             if changed { persistLocked() }
             return changed
         }
@@ -193,9 +195,9 @@ public final class MeshStore: @unchecked Sendable {
     @discardableResult
     public func compact(now: Date = Date(), retention: TimeInterval = MeshStore.defaultRetention) -> Bool {
         lock.withLock {
-            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count + storedState.hazardAlerts.count)
+            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count + storedState.hazardAlerts.count + storedState.trustMessages.count)
             storedState = Self.compacted(storedState, now: now, retention: retention)
-            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count + storedState.hazardAlerts.count)
+            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count + storedState.hazardAlerts.count + storedState.trustMessages.count)
             guard before != after else { return false }
             persistLocked()
             return true
@@ -222,12 +224,25 @@ public final class MeshStore: @unchecked Sendable {
         let checkIns = state.checkIns.filter { newest["\($0.circleID)|\($0.authorID)"]?.id == $0.id }
         let seismicReports = state.seismicReports.filter { $0.detectedAt >= cutoff }
         let hazardAlerts = state.hazardAlerts.filter { $0.occurredAt >= cutoff }
+        // Invitations and acceptances may wait days for the other phone to come into range.
+        let trustCutoff = now.addingTimeInterval(-7 * 86_400)
+        var latestShare: [String: TrustMessage] = [:]
+        for message in state.trustMessages where message.kind == .share && message.sentAt >= cutoff {
+            let key = "\(message.from)>\(message.to)"
+            if let current = latestShare[key], current.sentAt >= message.sentAt { continue }
+            latestShare[key] = message
+        }
+        let trustMessages = state.trustMessages.filter { message in
+            message.kind == .share
+                ? latestShare["\(message.from)>\(message.to)"]?.id == message.id
+                : message.sentAt >= trustCutoff
+        }
 
         let liveIDs = Set(posts.map(\.id)).union(messages.map(\.id)).union(checkIns.map(\.id))
-            .union(seismicReports.map(\.id)).union(hazardAlerts.map(\.id))
+            .union(seismicReports.map(\.id)).union(hazardAlerts.map(\.id)).union(trustMessages.map(\.id))
         let signatures = state.signatures.filter { liveIDs.contains($0.itemID) }
 
-        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports, signatures: signatures, hazardAlerts: hazardAlerts)
+        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports, signatures: signatures, hazardAlerts: hazardAlerts, trustMessages: trustMessages)
     }
 
     static func isStale(_ post: MeshPost, cutoff: Date) -> Bool {
