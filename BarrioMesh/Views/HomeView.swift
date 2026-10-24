@@ -10,17 +10,17 @@ struct HomeView: View {
                 VStack(spacing: 18) {
                     hero
 
-                    if !model.memory.pending.isEmpty {
-                        SectionHeader(title: "Faro necesita tu OK", subtitle: "Esto está fuera de lo que lo autorizaste a hacer solo.")
-                        ForEach(model.memory.pending) { pending in
-                            PendingCard(pending: pending)
-                        }
-                    }
-
                     if !agreements.isEmpty {
                         SectionHeader(title: "Encuentros acordados")
                         ForEach(agreements) { summary in
                             AgreementCard(summary: summary)
+                        }
+                    }
+
+                    if !model.memory.pending.isEmpty {
+                        SectionHeader(title: "Faro necesita tu OK", subtitle: "Esto está fuera de lo que lo autorizaste a hacer solo.")
+                        ForEach(model.memory.pending) { pending in
+                            PendingCard(pending: pending)
                         }
                     }
 

@@ -54,7 +54,7 @@ struct FaroMark: View {
                 .strokeBorder((emergency ? FaroTheme.ember : FaroTheme.beam).opacity(0.45), lineWidth: 1)
             Image(systemName: "light.beacon.max.fill")
                 .font(.system(size: size * 0.46, weight: .semibold))
-                .foregroundStyle(emergency ? FaroTheme.ember : FaroTheme.beam)
+                .foregroundStyle(emergency ? Color.white : FaroTheme.beam)
                 .symbolEffect(.pulse, isActive: emergency)
         }
         .frame(width: size, height: size)
@@ -70,6 +70,8 @@ struct StatusChip: View {
     var body: some View {
         Label(text, systemImage: systemImage)
             .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .foregroundStyle(color)

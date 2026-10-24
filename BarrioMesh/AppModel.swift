@@ -93,6 +93,11 @@ final class AppModel: ObservableObject {
             }
         }
         runAgent()
+
+        // Rehearsal shortcut: launch with `-faro-demo` to start the simulated neighbors.
+        if ProcessInfo.processInfo.arguments.contains("-faro-demo"), profile.isConfigured {
+            startSimulatedNeighbors()
+        }
     }
 
     // MARK: - Agent
@@ -293,12 +298,12 @@ final class AppModel: ObservableObject {
                 homeArea: profile.homeArea.isEmpty ? "Chapinero" : profile.homeArea,
                 meetingPoint: "Tienda de la esquina",
                 supplies: [
-                    Supply(resource: .water, quantity: 12, reserve: 8),
-                    Supply(resource: .power, quantity: 3, reserve: 1),
-                    Supply(resource: .transport, quantity: 3)
+                    Supply(id: Self.demoID(1), resource: .water, quantity: 12, reserve: 8),
+                    Supply(id: Self.demoID(2), resource: .power, quantity: 3, reserve: 1),
+                    Supply(id: Self.demoID(3), resource: .transport, quantity: 3)
                 ]
             ),
-            policy: AgentPolicy()
+            policy: AgentPolicy(autoGiveLimit: 10)
         )
         var family = AgentProfile(
             name: "\(profile.household.first?.name ?? "Mamá") (simulado)",
@@ -311,24 +316,38 @@ final class AppModel: ObservableObject {
 
         let now = Date()
         demoNeighbors = [luis, relative].map { agent in
-            (agent, agent.activateEmergency(memory: AgentMemory(), reason: "Simulación", now: now))
+            var memory = agent.activateEmergency(memory: AgentMemory(), reason: "Simulación", now: now)
+            // Simulated agents are not persisted; remember what they already published in an earlier run.
+            for supply in agent.profile.supplies {
+                if let post = store.state.posts.first(where: { $0.authorID == agent.selfID && $0.kind == .offer && $0.resource == supply.resource }) {
+                    memory.publishedFromProfile["offer:\(supply.id.uuidString)"] = post.id
+                }
+            }
+            if store.state.checkIns.contains(where: { $0.authorID == agent.selfID }) { memory.checkedInAt = now }
+            return (agent, memory)
         }
         if !memory.emergencyActive { setEmergency(true) } else { runAgent() }
     }
 
     private func stepDemoNeighbors(now: Date) {
         guard !demoNeighbors.isEmpty else { return }
-        for index in demoNeighbors.indices {
-            let neighbor = demoNeighbors[index]
-            let result = neighbor.agent.step(state: store.state, memory: neighbor.memory, connectivity: .offline, now: now)
-            demoNeighbors[index].memory = result.memory
-            if result.changesMesh,
-               store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns) {
-                publishChange()
-                // Give the real agent a turn to react, the way a nearby phone would.
-                let reaction = agent.step(state: store.state, memory: memory, connectivity: effectiveConnectivity, now: now)
-                commit(reaction)
+        // Take turns like nearby phones would, until nobody has anything new to say.
+        for _ in 0..<6 {
+            var changed = false
+            for index in demoNeighbors.indices {
+                let neighbor = demoNeighbors[index]
+                let result = neighbor.agent.step(state: store.state, memory: neighbor.memory, connectivity: .offline, now: now)
+                demoNeighbors[index].memory = result.memory
+                if result.changesMesh,
+                   store.apply(posts: result.posts, proposals: result.proposals, messages: result.messages, checkIns: result.checkIns) {
+                    changed = true
+                }
             }
+            let reaction = agent.step(state: store.state, memory: memory, connectivity: effectiveConnectivity, now: now)
+            if reaction.changesMesh { changed = true }
+            commit(reaction)
+            guard changed else { break }
+            publishChange()
         }
     }
 
@@ -388,6 +407,10 @@ final class AppModel: ObservableObject {
     private static func load<Value: Decodable>(_ type: Value.Type, from url: URL, decoder: JSONDecoder) -> Value? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? decoder.decode(type, from: data)
+    }
+
+    private static func demoID(_ n: Int) -> UUID {
+        UUID(uuidString: String(format: "FA20DE30-0000-4000-8000-%012d", n))!
     }
 
     private static let deviceIDKey = "barrio-mesh.device-id"
