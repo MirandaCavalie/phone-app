@@ -118,6 +118,16 @@ public enum GoBag {
         /// Units to buy to close the gap.
         public let toBuy: Int
 
+        /// Just the problem, for a row that already shows the item's name.
+        public var status: String {
+            switch problem {
+            case .missing: return t("Falta", "Missing")
+            case let .short(have): return t("Tienes \(have) de \(requirement.quantity)", "\(have) of \(requirement.quantity)")
+            case let .expiring(on): return t("Vence el \(on.formatted(date: .abbreviated, time: .omitted))", "Expires \(on.formatted(date: .abbreviated, time: .omitted))")
+            case .expired: return t("Vencido", "Expired")
+            }
+        }
+
         public var summary: String {
             switch problem {
             case .missing: return t("Falta: \(requirement.label) ×\(toBuy)", "Missing: \(requirement.label) ×\(toBuy)")
