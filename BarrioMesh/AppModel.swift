@@ -387,6 +387,10 @@ final class AppModel: ObservableObject {
             case let .call(number, label):
                 if let url = URL(string: "tel://\(number)") { openURL(url) }
                 detail = label
+            case .orderSupplies:
+                // Handled by the review sheet, which calls `logOrder` when the person sends it.
+                done = false
+                return
             case let .message(item):
                 memory.outbox.append(item)
                 if let url = URL(string: "https://wa.me/\(item.phone)?text=\(item.body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") { openURL(url) }
@@ -401,6 +405,19 @@ final class AppModel: ObservableObject {
             ))
             save(memory, to: Self.memoryURL)
         }
+    }
+
+    func logOrder(to store: String, lines: [SupplyOrder.Line]) {
+        memory.record(ActivityEntry(
+            date: Date(),
+            kind: .followUp,
+            title: t("Preparé el pedido de la mochila para \(store)", "Prepared the go-bag order for \(store)"),
+            detail: lines.map { "\($0.name) ×\($0.quantity)" }.joined(separator: ", ")
+        ))
+        if let suggestion = suggestions.first(where: { $0.id.hasPrefix("gobag:") }) {
+            memory.dismissedKeys.insert(suggestion.id)
+        }
+        save(memory, to: Self.memoryURL)
     }
 
     func dismiss(_ suggestion: Suggestion) {

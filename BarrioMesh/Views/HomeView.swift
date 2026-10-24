@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var showingPaperwork = LaunchOptions.sheet == "paperwork"
     @State private var showingLog = false
     @State private var showingAlerts = LaunchOptions.sheet == "alerts"
+    @State private var showingGoBag = LaunchOptions.sheet == "gobag"
 
     var body: some View {
         NavigationStack {
@@ -43,6 +44,12 @@ struct HomeView: View {
                         ForEach(model.suggestions.prefix(3)) { suggestion in
                             SuggestionCard(suggestion: suggestion)
                         }
+                        NavigationLink {
+                            GoBagView()
+                        } label: {
+                            GoBagRowLink()
+                        }
+                        .buttonStyle(.plain)
                         PreparednessCard()
                     }
 
@@ -70,6 +77,7 @@ struct HomeView: View {
             .sheet(isPresented: $showingPaperwork) { PaperworkView() }
             .sheet(isPresented: $showingLog) { ActivityLogView() }
             .sheet(isPresented: $showingAlerts) { NavigationStack { AlertsView(monitor: model.hazardMonitor) } }
+            .sheet(isPresented: $showingGoBag) { NavigationStack { GoBagView() } }
         }
     }
 
@@ -220,10 +228,32 @@ private struct TodayCard: View {
 }
 
 /// Something the agent offers to handle: one tap to do it, one to hide it.
+private struct GoBagRowLink: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        let readiness = GoBag.readiness(model.profile.goBag, for: model.profile, now: Date())
+        HStack(spacing: 12) {
+            Image(systemName: "backpack.fill")
+                .font(.title3)
+                .foregroundStyle(readiness == 100 ? FaroTheme.safe : FaroTheme.beam)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(t("Mochila de emergencia", "Emergency go-bag")).font(.subheadline.weight(.semibold))
+                Text(t("\(readiness)% lista", "\(readiness)% ready")).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(.tertiary)
+        }
+        .faroCard()
+    }
+}
+
 private struct SuggestionCard: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.openURL) private var openURL
     let suggestion: Suggestion
+    @State private var reviewing: SupplyOrder?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -238,7 +268,11 @@ private struct SuggestionCard: View {
                 }
                 HStack {
                     Button(suggestion.actionLabel) {
-                        withAnimation { model.perform(suggestion) { openURL($0) } }
+                        if case let .orderSupplies(order) = suggestion.action {
+                            reviewing = order
+                        } else {
+                            withAnimation { model.perform(suggestion) { openURL($0) } }
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     Button(t("Ahora no", "Not now")) {
@@ -251,6 +285,9 @@ private struct SuggestionCard: View {
             Spacer(minLength: 0)
         }
         .faroCard()
+        .sheet(item: Binding(get: { reviewing.map(IdentifiedOrder.init) }, set: { reviewing = $0?.order })) { wrapper in
+            SupplyOrderView(order: wrapper.order)
+        }
     }
 }
 

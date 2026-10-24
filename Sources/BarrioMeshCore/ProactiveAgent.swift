@@ -25,6 +25,8 @@ public struct Suggestion: Equatable, Identifiable, Sendable {
         case remindDoses
         case call(number: String, label: String)
         case message(OutboxItem)
+        /// Opens the prepared order for review; the person sends it.
+        case orderSupplies(SupplyOrder)
     }
 
     public let id: String
@@ -83,7 +85,11 @@ public enum ProactiveAgent {
                            "Next dose: \(dose.member.name)'s \(dose.medication.name) at \(time(dose.at, calendar))."))
         }
 
-        if let gap = profile.preparedness.gaps.first {
+        let bagGaps = GoBag.audit(profile.goBag, for: profile, now: now)
+        if !bagGaps.isEmpty {
+            lines.append(t("Mochila \(GoBag.readiness(profile.goBag, for: profile, now: now))% lista: \(bagGaps.first!.summary).",
+                           "Go-bag \(GoBag.readiness(profile.goBag, for: profile, now: now))% ready: \(bagGaps.first!.summary)."))
+        } else if let gap = profile.preparedness.gaps.first {
             lines.append(t("Pendiente: \(gap)", "To do: \(gap)"))
         }
         return Briefing(greeting: greeting, lines: lines)
@@ -172,6 +178,24 @@ public enum ProactiveAgent {
                     ))
                 }
             }
+        }
+
+        // Go-bag: missing, short or expiring items become one prepared order.
+        let bagGaps = GoBag.audit(profile.goBag, for: profile, now: now)
+        let order = SupplyOrder(gaps: bagGaps)
+        if !order.lines.isEmpty {
+            let expiring = bagGaps.filter { if case .expiring = $0.problem { return true }; if case .expired = $0.problem { return true }; return false }
+            let week = calendar.component(.weekOfYear, from: now)
+            result.insert(Suggestion(
+                id: "gobag:\(calendar.component(.year, from: now))-\(week):\(order.lines.count)",
+                icon: "backpack.fill",
+                title: expiring.isEmpty
+                    ? t("Mochila: faltan \(order.lines.count) cosas", "Go-bag: \(order.lines.count) items missing")
+                    : t("Mochila: \(expiring.count) por vencer, \(order.lines.count) en total", "Go-bag: \(expiring.count) expiring, \(order.lines.count) total"),
+                detail: order.lines.prefix(3).map { "\($0.name) ×\($0.quantity)" }.joined(separator: ", "),
+                actionLabel: profile.trustedStore == nil ? t("Preparar pedido", "Prepare order") : t("Pedir a \(profile.trustedStore!.name)", "Order from \(profile.trustedStore!.name)"),
+                action: .orderSupplies(order)
+            ), at: min(result.count, profile.household.contains(where: { $0.medical.medications.contains { ($0.supplyDays ?? 99) <= 5 } }) ? 2 : 0))
         }
 
         // Dose reminders, once.
