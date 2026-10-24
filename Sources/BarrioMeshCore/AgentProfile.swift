@@ -96,6 +96,19 @@ public enum Country: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    public var iso3: String {
+        switch self {
+        case .colombia: "COL"
+        case .venezuela: "VEN"
+        case .mexico: "MEX"
+        case .chile: "CHL"
+        case .peru: "PER"
+        case .ecuador: "ECU"
+        case .argentina: "ARG"
+        case .unitedStates: "USA"
+        }
+    }
+
     public var flag: String {
         switch self {
         case .colombia: "🇨🇴"

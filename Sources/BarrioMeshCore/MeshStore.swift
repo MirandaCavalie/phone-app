@@ -141,9 +141,9 @@ public final class MeshStore: @unchecked Sendable {
     }
 
     static func unionHazards(_ alerts: inout [HazardAlert], with incoming: [HazardAlert]) -> Bool {
-        var known = Set(alerts.map(\.eventID))
         var changed = false
-        for alert in incoming where known.insert(alert.eventID).inserted {
+        // One entry per physical event, even when USGS and EMSC both report it.
+        for alert in incoming where !alerts.contains(where: { $0.isSameEvent(as: alert) }) {
             alerts.append(alert)
             changed = true
         }
