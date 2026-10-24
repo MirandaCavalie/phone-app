@@ -58,6 +58,7 @@ final class AppModel: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
 
         store = MeshStore(fileURL: Self.applicationSupportURL.appendingPathComponent("mesh-state.json"))
+        store.compact()
         meshState = store.state
         let loadedProfile = Self.load(AgentProfile.self, from: Self.profileURL, decoder: decoder) ?? AgentProfile()
         profile = loadedProfile
@@ -89,6 +90,7 @@ final class AppModel: ObservableObject {
         heartbeat = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(20))
+                if self?.store.compact() == true { self?.meshState = self?.store.state ?? MeshState() }
                 self?.runAgent()
             }
         }
