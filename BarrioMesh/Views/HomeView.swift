@@ -5,6 +5,7 @@ struct HomeView: View {
     @State private var showingChat = LaunchOptions.sheet == "chat"
     @State private var showingPaperwork = LaunchOptions.sheet == "paperwork"
     @State private var showingLog = false
+    @State private var showingAlerts = LaunchOptions.sheet == "alerts"
 
     var body: some View {
         NavigationStack {
@@ -15,6 +16,13 @@ struct HomeView: View {
                     if let latest = model.officialAlerts.first {
                         OfficialAlertCard(alert: latest.alert, assessment: latest.assessment)
                     }
+
+                    NavigationLink {
+                        AlertsView(monitor: model.hazardMonitor)
+                    } label: {
+                        LiveAlertsRow(monitor: model.hazardMonitor)
+                    }
+                    .buttonStyle(.plain)
 
                     ForEach(agreements) { summary in
                         AgreementCard(summary: summary)
@@ -57,6 +65,7 @@ struct HomeView: View {
             .sheet(isPresented: $showingChat) { AskFaroView() }
             .sheet(isPresented: $showingPaperwork) { PaperworkView() }
             .sheet(isPresented: $showingLog) { ActivityLogView() }
+            .sheet(isPresented: $showingAlerts) { NavigationStack { AlertsView(monitor: model.hazardMonitor) } }
         }
     }
 
@@ -174,6 +183,38 @@ private struct RowButton: View {
             .faroCard()
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct LiveAlertsRow: View {
+    @EnvironmentObject private var model: AppModel
+    @ObservedObject var monitor: HazardMonitor
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "dot.radiowaves.left.and.right")
+                .font(.title3)
+                .foregroundStyle(FaroTheme.beam)
+                .symbolEffect(.variableColor.iterative, options: .repeating, isActive: model.effectiveConnectivity == .online)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(t("Alertas en vivo · \(model.profile.approximateLocation.label)", "Live alerts · \(model.profile.approximateLocation.label)"))
+                    .font(.subheadline.weight(.semibold))
+                Group {
+                    if let date = monitor.lastUpdate {
+                        Text(t("\(monitor.regional.count) eventos en 24 h · ", "\(monitor.regional.count) events in 24 h · ")) + Text(date, style: .relative)
+                    } else {
+                        Text(model.effectiveConnectivity == .online ? t("Conectando a 4 fuentes…", "Connecting to 4 sources…") : t("Sin internet", "Offline"))
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(.tertiary)
+        }
+        .faroCard()
     }
 }
 
@@ -368,7 +409,7 @@ private struct OfficialAlertCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: alert.kind == .tsunami ? "water.waves" : "waveform.path.ecg")
+                Image(systemName: alert.kind.systemImage)
                 Text(alert.isSimulated ? "\(alert.source) · \(t("simulada", "simulated"))" : alert.source)
                 Spacer()
                 Text(alert.occurredAt, style: .relative)

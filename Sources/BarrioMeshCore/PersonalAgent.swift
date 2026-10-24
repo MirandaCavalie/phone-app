@@ -409,9 +409,12 @@ public struct PersonalAgent: Sendable {
     /// Dangerous ones nearby start emergency mode before the network collapses.
     private func observeHazardAlerts(_ alerts: [HazardAlert], result: inout AgentStepResult, now: Date) {
         let home = profile.isConfigured ? profile.approximateLocation.point : nil
+        var handled = alerts.filter { result.memory.seenHazards.contains($0.eventID) }
         for alert in alerts.sorted(by: { $0.occurredAt < $1.occurredAt })
         where !result.memory.seenHazards.contains(alert.eventID) && now.timeIntervalSince(alert.occurredAt) < 6 * 3_600 {
             result.memory.seenHazards.insert(alert.eventID)
+            guard !handled.contains(where: { $0.isSameEvent(as: alert) }) else { continue }
+            handled.append(alert)
             let assessment = HazardAssessment.assess(alert, home: home)
             guard assessment.level > .ignore else { continue }
 

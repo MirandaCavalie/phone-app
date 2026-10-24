@@ -119,6 +119,7 @@ final class AppModel: ObservableObject {
         seismometer.start()
 
         hazardMonitor.isOnline = { [weak self] in self?.effectiveConnectivity == .online }
+        hazardMonitor.home = { [weak self] in self?.profile.approximateLocation.point ?? GeoPoint(latitude: 4.711, longitude: -74.072) }
         hazardMonitor.onAlerts = { [weak self] alerts in self?.receiveOfficial(alerts) }
         hazardMonitor.start(relayedBy: deviceID)
         if profile.isConfigured { HazardMonitor.requestNotificationPermission() }

@@ -26,6 +26,49 @@ public struct HazardAlert: Codable, Identifiable, Hashable, Sendable {
     public enum Kind: String, Codable, Sendable {
         case earthquake
         case tsunami
+        case volcano
+        case flood
+        case cyclone
+        case wildfire
+        case drought
+
+        public var displayName: String {
+            switch self {
+            case .earthquake: t("Sismo", "Earthquake")
+            case .tsunami: "Tsunami"
+            case .volcano: t("Volcán", "Volcano")
+            case .flood: t("Inundación", "Flood")
+            case .cyclone: t("Ciclón", "Cyclone")
+            case .wildfire: t("Incendio forestal", "Wildfire")
+            case .drought: t("Sequía", "Drought")
+            }
+        }
+
+        public var systemImage: String {
+            switch self {
+            case .earthquake: "waveform.path.ecg"
+            case .tsunami: "water.waves"
+            case .volcano: "mountain.2.fill"
+            case .flood: "cloud.heavyrain.fill"
+            case .cyclone: "hurricane"
+            case .wildfire: "flame.fill"
+            case .drought: "sun.max.trianglebadge.exclamationmark"
+            }
+        }
+    }
+
+    /// Official alert level for non-seismic events (GDACS green/orange/red, PTWC category).
+    public var alertLevel: String? { pagerLevel }
+
+    /// Two sources reporting the same physical event (USGS and EMSC for one quake).
+    public func isSameEvent(as other: HazardAlert) -> Bool {
+        guard kind == other.kind || (kind == .earthquake && other.kind == .tsunami) || (kind == .tsunami && other.kind == .earthquake) else { return false }
+        if eventID == other.eventID { return true }
+        let window: TimeInterval = kind == .earthquake || kind == .tsunami ? 120 : 6 * 3_600
+        let distance = kind == .earthquake || kind == .tsunami ? 100.0 : 50.0
+        return abs(occurredAt.timeIntervalSince(other.occurredAt)) < window
+            && epicenter.distanceKm(to: other.epicenter) < distance
+            && (magnitude == 0 || other.magnitude == 0 || abs(magnitude - other.magnitude) < 0.8)
     }
 
     public let id: UUID
@@ -137,6 +180,48 @@ public struct HazardAssessment: Equatable, Sendable {
     public let headline: String
     public let advice: String
 
+    /// Floods, volcanoes, cyclones, wildfires and PTWC tsunami bulletins: graded by the
+    /// source's own alert level and by distance.
+    static func assessOther(_ alert: HazardAlert, distance d: Double) -> HazardAssessment {
+        let km = Int(d.rounded())
+        let level = (alert.pagerLevel ?? "").lowercased()
+        let name = alert.kind.displayName
+
+        if alert.kind == .tsunami {
+            // PTWC categories: threat/warning/watch/advisory. "Information" never reaches here.
+            let severe = ["threat", "warning"].contains(where: level.contains)
+            guard d <= 3_000 else { return HazardAssessment(level: .ignore, distanceKm: d, headline: "", advice: "") }
+            return HazardAssessment(
+                level: severe ? .danger : .warning, distanceKm: d,
+                headline: t("Boletín de tsunami (\(alert.pagerLevel ?? "PTWC")) a \(km) km", "Tsunami bulletin (\(alert.pagerLevel ?? "PTWC")) \(km) km away"),
+                advice: t("Si estás en la costa, sube a una zona alta y sigue a las autoridades.", "If you are on the coast, move to high ground and follow local authorities.")
+            )
+        }
+
+        let radius: Double
+        let grade: Level
+        switch level {
+        case "red": radius = 500; grade = .danger
+        case "orange": radius = 350; grade = .warning
+        default: radius = 150; grade = .watch
+        }
+        guard d <= radius else { return HazardAssessment(level: .ignore, distanceKm: d, headline: "", advice: "") }
+
+        let advice: String
+        switch alert.kind {
+        case .flood: advice = t("Aléjate de ríos y quebradas; no cruces calles inundadas.", "Stay away from rivers and ravines; never cross flooded streets.")
+        case .volcano: advice = t("Sigue a las autoridades; protégete de la ceniza con mascarilla.", "Follow authorities; use a mask against ash.")
+        case .cyclone: advice = t("Refúgiate lejos de ventanas y asegura agua y baterías.", "Shelter away from windows; secure water and batteries.")
+        case .wildfire: advice = t("Prepárate para evacuar y evita el humo.", "Be ready to evacuate and avoid the smoke.")
+        default: advice = t("Revisa tu kit y a tu familia.", "Check your kit and your family.")
+        }
+        return HazardAssessment(
+            level: grade, distanceKm: d,
+            headline: t("\(name) a \(km) km de ti", "\(name) \(km) km away"),
+            advice: advice
+        )
+    }
+
     /// How far a quake of this size is typically felt strongly (rough, conservative).
     static func feltRadiusKm(_ magnitude: Double) -> Double {
         switch magnitude {
@@ -153,6 +238,9 @@ public struct HazardAssessment: Equatable, Sendable {
             return HazardAssessment(level: .ignore, distanceKm: .infinity, headline: "", advice: "")
         }
         let d = alert.epicenter.distanceKm(to: home)
+        if alert.kind != .earthquake && !(alert.kind == .tsunami && alert.source != "PTWC") {
+            return assessOther(alert, distance: d)
+        }
         let felt = feltRadiusKm(alert.magnitude)
         let m = String(format: "%.1f", alert.magnitude)
         let km = Int(d.rounded())
