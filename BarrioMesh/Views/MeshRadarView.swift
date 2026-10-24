@@ -15,7 +15,7 @@ struct MeshRadarView: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
+            let now = context.date.timeIntervalSinceReferenceDate
             Canvas { canvas, size in
                 let center = CGPoint(x: size.width / 2, y: size.height / 2)
                 let rx = size.width / 2 - 36
@@ -30,12 +30,12 @@ struct MeshRadarView: View {
                 }
                 // Expanding pulses: the phone advertising itself over Bluetooth.
                 for offset in [0.0, 0.5] {
-                    let phase = (t / 2.4 + offset).truncatingRemainder(dividingBy: 1)
+                    let phase = (now / 2.4 + offset).truncatingRemainder(dividingBy: 1)
                     canvas.stroke(Path(ellipseIn: CGRect(x: center.x - rx * phase, y: center.y - ry * phase, width: rx * phase * 2, height: ry * phase * 2)),
                                   with: .color(beam.opacity(0.5 * (1 - phase))), lineWidth: 2)
                 }
                 // Sweeping beam, like a lighthouse.
-                let angle = Angle.radians(t * 0.9)
+                let angle = Angle.radians(now * 0.9)
                 var sweep = Path()
                 sweep.move(to: center)
                 sweep.addArc(center: center, radius: radius, startAngle: angle - .degrees(22), endAngle: angle, clockwise: false)
@@ -54,7 +54,7 @@ struct MeshRadarView: View {
                         link.addLine(to: point)
                         let color: Color = node.kind == .agreement ? FaroTheme.safe : node.kind == .family ? .pink : .white
                         canvas.stroke(link, with: .color(color.opacity(node.kind == .peer ? 0.25 : 0.7)),
-                                      style: StrokeStyle(lineWidth: node.kind == .peer ? 1 : 2, dash: node.kind == .peer ? [] : [4, 4], dashPhase: -t * 12))
+                                      style: StrokeStyle(lineWidth: node.kind == .peer ? 1 : 2, dash: node.kind == .peer ? [] : [4, 4], dashPhase: -now * 12))
                     }
                     let dot: CGFloat = node.kind == .relayed ? 7 : 11
                     canvas.fill(Path(ellipseIn: CGRect(x: point.x - dot / 2, y: point.y - dot / 2, width: dot, height: dot)),

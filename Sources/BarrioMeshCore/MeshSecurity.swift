@@ -194,7 +194,7 @@ extension FamilyCircle {
             "tucan", "jaguar", "volcan", "cordillera", "manglar", "palmera", "turpial", "guacamaya",
             "mango", "maracuya", "arepa", "cacao", "llano", "paramo", "laguna", "sabana"
         ]
-        let picked = (0..<3).map { _ in words.randomElement()! }
+        let picked = words.shuffled().prefix(3)
         return picked.joined(separator: "-") + "-\(Int.random(in: 10...99))"
     }
 }

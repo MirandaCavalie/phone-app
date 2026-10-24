@@ -47,6 +47,8 @@
 		10000000000000000000002B /* HazardAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* HazardAlerts.swift */; };
 		10000000000000000000002C /* HazardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002C /* HazardMonitor.swift */; };
 		10000000000000000000002D /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002D /* Localization.swift */; };
+		10000000000000000000002E /* MemberViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002E /* MemberViews.swift */; };
+		10000000000000000000002F /* FamilyCare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002F /* FamilyCare.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -95,6 +97,8 @@
 		20000000000000000000002B /* HazardAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardAlerts.swift; sourceTree = "<group>"; };
 		20000000000000000000002C /* HazardMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardMonitor.swift; sourceTree = "<group>"; };
 		20000000000000000000002D /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		20000000000000000000002E /* MemberViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemberViews.swift; sourceTree = "<group>"; };
+		20000000000000000000002F /* FamilyCare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilyCare.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -145,6 +149,7 @@
 		400000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002E /* MemberViews.swift */,
 				20000000000000000000002A /* MeshRadarView.swift */,
 				200000000000000000000029 /* PaperworkView.swift */,
 				200000000000000000000024 /* QuakeAlertView.swift */,
@@ -175,6 +180,7 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002F /* FamilyCare.swift */,
 				20000000000000000000002D /* Localization.swift */,
 				20000000000000000000002B /* HazardAlerts.swift */,
 				200000000000000000000028 /* Paperwork.swift */,
@@ -293,6 +299,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10000000000000000000002F /* FamilyCare.swift in Sources */,
+				10000000000000000000002E /* MemberViews.swift in Sources */,
 				10000000000000000000002D /* Localization.swift in Sources */,
 				10000000000000000000002C /* HazardMonitor.swift in Sources */,
 				10000000000000000000002B /* HazardAlerts.swift in Sources */,

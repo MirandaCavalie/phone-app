@@ -38,6 +38,16 @@ struct AgentSnapshot: Sendable {
         }
     }
 
+    var whereaboutsLines: [String] {
+        profile.household.map { member in
+            let location = FamilyLocator.likelyLocation(of: member, at: Date(), homeArea: profile.homeArea)
+            var line = "\(member.name) (\(member.relation)): \(location.description), \(location.reason)"
+            if !location.meetingPoint.isEmpty { line += ", meeting point \(location.meetingPoint)" }
+            if !member.medical.isEmpty { line += ". Medical: \(member.medical.summary)" }
+            return line
+        }
+    }
+
     var profileLines: [String] {
         var lines = ["Name: \(profile.name)", "Area: \(profile.homeArea)", "Country: \(profile.country.displayName), emergency number \(profile.country.emergencyNumber)"]
         lines += profile.household.map { "Lives with: \($0.name) (\($0.relation))" + ($0.dependsOn.isEmpty ? "" : ", relies on \($0.dependsOn.map(\.rawValue).joined(separator: ", "))") }
@@ -91,6 +101,10 @@ enum AgentBrain {
             return lines.isEmpty
                 ? t("Aún no llega ningún aviso de tu familia. Sigo escuchando.", "No word from your family yet. I'm still listening.")
                 : t("Lo último de tu familia:\n• ", "Latest from your family:\n• ") + lines.joined(separator: "\n• ")
+        }
+
+        if ["donde", "where", "colegio", "school", "trabajo", "work"].contains(where: q.contains), !snapshot.whereaboutsLines.isEmpty {
+            return t("Según sus rutinas:\n• ", "Per their routines:\n• ") + snapshot.whereaboutsLines.joined(separator: "\n• ")
         }
 
         if ["preparad", "kit", "falta", "listo", "mochila", "prepared", "ready", "missing"].contains(where: q.contains) {
@@ -212,6 +226,7 @@ private extension AgentBrain {
                 SnapshotTool(name: "agreements", description: "Handoffs the agent agreed with neighbors: what, who, where and when", lines: snapshot.agreementLines),
                 SnapshotTool(name: "neighborhood", description: "What nearby neighbors currently need or offer", lines: snapshot.neighborhoodLines),
                 SnapshotTool(name: "profile", description: "The user's household, supplies and preparedness gaps", lines: snapshot.profileLines),
+                SnapshotTool(name: "familyWhereabouts", description: "Where each relative probably is right now per their routine, plus their medical card", lines: snapshot.whereaboutsLines),
                 SnapshotTool(name: "recentActivity", description: "The last actions the agent took on the user's behalf", lines: snapshot.memory.log.prefix(10).map { "\(AgentSnapshot.time($0.date)) \($0.title). \($0.detail)" })
             ],
             instructions: """

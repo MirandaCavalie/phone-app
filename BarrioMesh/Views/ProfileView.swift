@@ -25,29 +25,6 @@ struct ProfileView: View {
                 }
 
                 Section {
-                    ForEach($model.profile.household) { $member in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                TextField(t("Nombre", "Name"), text: $member.name)
-                                Text(member.relation).foregroundStyle(.secondary)
-                            }
-                            HStack {
-                                dependencyToggle(.medicine, member: $member)
-                                dependencyToggle(.power, member: $member)
-                            }
-                        }
-                    }
-                    .onDelete { model.profile.household.remove(atOffsets: $0) }
-                    Button(t("Agregar persona", "Add person")) {
-                        model.profile.household.append(HouseholdMember(name: t("Familiar", "Relative"), relation: t("familiar", "relative")))
-                    }
-                } header: {
-                    Text("Tu hogar")
-                } footer: {
-                    Text("Si alguien depende de medicina o electricidad y no hay reserva, Faro lo pide primero.")
-                }
-
-                Section {
                     ForEach($model.profile.supplies) { $supply in
                         VStack(alignment: .leading) {
                             Label(supply.resource.displayName, systemImage: supply.resource.systemImage)
