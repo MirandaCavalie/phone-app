@@ -20,8 +20,25 @@ struct FamilyView: View {
                     }
                 }
 
+                Section {
+                    ForEach(model.profile.household) { member in
+                        NavigationLink {
+                            MemberEditorView(member: member, isNew: false)
+                        } label: {
+                            MemberRow(member: member)
+                        }
+                    }
+                    NavigationLink {
+                        MemberEditorView(member: HouseholdMember(name: "", relation: ""), isNew: true)
+                    } label: {
+                        Label(t("Agregar familiar", "Add relative"), systemImage: "person.badge.plus")
+                    }
+                } header: {
+                    Text(t("Personas", "People"))
+                }
+
                 if model.profile.familyCircleID != nil {
-                    Section(t("Tu familia", "Your family")) {
+                    Section(t("Avisos recibidos", "Check-ins received")) {
                         if model.familyCheckIns.isEmpty {
                             Text(t("Aún sin noticias. Sigo escuchando.", "No word yet. Still listening."))
                                 .foregroundStyle(.secondary)
@@ -116,6 +133,33 @@ struct FamilyView: View {
                 }
             }
             .navigationTitle(t("Familia", "Family"))
+        }
+    }
+
+    private struct MemberRow: View {
+        @EnvironmentObject private var model: AppModel
+        let member: HouseholdMember
+
+        var body: some View {
+            let location = FamilyLocator.likelyLocation(of: member, at: Date(), homeArea: model.profile.homeArea)
+            HStack(spacing: 12) {
+                Text(String(member.name.prefix(1)).uppercased())
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(member.isVulnerable ? FaroTheme.ember : Color.accentColor, in: Circle())
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(member.name).font(.subheadline.weight(.semibold))
+                    Text([member.relation, location.description].filter { !$0.isEmpty }.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if !member.medical.medications.isEmpty {
+                    Image(systemName: "pills.fill").foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
