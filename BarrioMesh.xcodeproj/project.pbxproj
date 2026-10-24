@@ -57,6 +57,7 @@
 		100000000000000000000035 /* TrustedPeopleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000035 /* TrustedPeopleViews.swift */; };
 		100000000000000000000036 /* GoBag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000036 /* GoBag.swift */; };
 		100000000000000000000037 /* GoBagViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000037 /* GoBagViews.swift */; };
+		100000000000000000000038 /* OnlineBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000038 /* OnlineBrain.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -115,6 +116,7 @@
 		200000000000000000000035 /* TrustedPeopleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedPeopleViews.swift; sourceTree = "<group>"; };
 		200000000000000000000036 /* GoBag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoBag.swift; sourceTree = "<group>"; };
 		200000000000000000000037 /* GoBagViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoBagViews.swift; sourceTree = "<group>"; };
+		200000000000000000000038 /* OnlineBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineBrain.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -233,6 +235,7 @@
 		400000000000000000000008 /* Agent */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000038 /* OnlineBrain.swift */,
 				200000000000000000000033 /* DailyAssistant.swift */,
 				20000000000000000000002C /* HazardMonitor.swift */,
 				200000000000000000000027 /* VoiceAgent.swift */,
@@ -323,6 +326,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				100000000000000000000038 /* OnlineBrain.swift in Sources */,
 				100000000000000000000037 /* GoBagViews.swift in Sources */,
 				100000000000000000000036 /* GoBag.swift in Sources */,
 				100000000000000000000035 /* TrustedPeopleViews.swift in Sources */,

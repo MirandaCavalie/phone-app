@@ -37,6 +37,8 @@ final class AppModel: ObservableObject {
     let seismometer = Seismometer()
     let hazardMonitor = HazardMonitor()
     let assistant = DailyAssistant()
+    let onlineBrain = OnlineBrain()
+    @Published private(set) var hasCloudKey = !(CloudKeyStore.key ?? "").isEmpty
     let identity: AgentIdentity
     let narrator = Narrator()
     /// English by default; the whole app, the agent's log and its voice follow this.
@@ -423,6 +425,60 @@ final class AppModel: ObservableObject {
     func dismiss(_ suggestion: Suggestion) {
         memory.dismissedKeys.insert(suggestion.id)
         save(memory, to: Self.memoryURL)
+    }
+
+    // MARK: - Online brain
+
+    /// With internet and a key, questions go to Claude; otherwise to the phone.
+    var onlineBrainReady: Bool { hasCloudKey && effectiveConnectivity == .online }
+
+    func saveCloudKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        CloudKeyStore.save(trimmed)
+        hasCloudKey = true
+    }
+
+    func clearCloudKey() {
+        CloudKeyStore.clear()
+        hasCloudKey = false
+        onlineBrain.reset()
+    }
+
+    /// Runs an action the person confirmed in the chat. Returns a short confirmation.
+    func execute(_ action: ProposedAction, openURL: @escaping (URL) -> Void) async -> String {
+        let result: String
+        switch action.kind {
+        case let .publish(kind, resource, quantity, note):
+            addPost(kind: kind, resource: resource, quantity: quantity, unit: resource.unit(plural: quantity != 1),
+                    urgency: .important, area: profile.homeArea, note: note, expiresIn: 6 * 3_600)
+            result = t("Publicado a los agentes cercanos.", "Posted to nearby agents.")
+        case let .note(agentID, name, text):
+            sendNote(to: agentID, text: text)
+            result = t("Mensaje cifrado en camino a \(name).", "Encrypted message on its way to \(name).")
+        case let .calendar(title, start, minutes):
+            result = await assistant.addEvent(title: title, start: start, durationMinutes: minutes, notes: "")
+                ? t("Agregado a tu calendario.", "Added to your calendar.")
+                : t("Permite el acceso al calendario en Ajustes.", "Allow calendar access in Settings.")
+        case .order:
+            result = t("Abre el pedido para revisarlo.", "Opening the order to review.")
+        case let .emergency(active):
+            setEmergency(active)
+            result = active ? t("Modo emergencia activado.", "Emergency mode on.") : t("De vuelta a modo normal.", "Back to normal.")
+        case let .checkIn(status):
+            checkIn(status)
+            result = t("Tu familia recibirá: \(status.inlineName).", "Your family will see: \(status.displayName).")
+        case let .whatsapp(_, phone, text):
+            if let url = URL(string: "https://wa.me/\(phone)?text=\(text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") { openURL(url) }
+            result = t("WhatsApp abierto; tú lo envías.", "WhatsApp opened; you send it.")
+        }
+        memory.record(ActivityEntry(date: Date(), kind: .approval, title: t("Aprobaste: \(action.title)", "You approved: \(action.title)"), detail: action.detail))
+        save(memory, to: Self.memoryURL)
+        return result
+    }
+
+    func sendNote(to agentID: String, text: String) {
+        commit(agent.sendNote(to: agentID, text: text, memory: memory, now: Date()))
     }
 
     // MARK: - Trusted people

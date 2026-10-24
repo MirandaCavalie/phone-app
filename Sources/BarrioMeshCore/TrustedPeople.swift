@@ -82,6 +82,8 @@ public struct TrustedUpdate: Codable, Equatable, Sendable {
 public struct TrustMessage: Codable, Hashable, Identifiable, Sendable {
     public enum Kind: String, Codable, Sendable {
         case invite, accept, revoke, share
+        /// A short text message for one trusted person, sealed like a share.
+        case note
     }
 
     public let id: UUID
@@ -152,11 +154,56 @@ public enum TrustNetwork {
         return box.combined
     }
 
+    public static func sealNote(_ note: TrustedNote, from: String, to person: TrustedPerson, with key: Curve25519.KeyAgreement.PrivateKey) -> Data? {
+        guard let channel = channelKey(mine: key, theirs: person.agreementKey, ids: [from, person.agentID]),
+              let plain = try? JSONEncoder().encode(note),
+              let box = try? ChaChaPoly.seal(plain, using: channel) else { return nil }
+        return box.combined
+    }
+
+    public static func openNote(_ message: TrustMessage, me: String, with key: Curve25519.KeyAgreement.PrivateKey) -> TrustedNote? {
+        guard let sealed = message.sealed,
+              let channel = channelKey(mine: key, theirs: message.agreementKey, ids: [me, message.from]),
+              let box = try? ChaChaPoly.SealedBox(combined: sealed),
+              let plain = try? ChaChaPoly.open(box, using: channel) else { return nil }
+        return try? JSONDecoder().decode(TrustedNote.self, from: plain)
+    }
+
     public static func open(_ message: TrustMessage, me: String, with key: Curve25519.KeyAgreement.PrivateKey) -> TrustedUpdate? {
         guard let sealed = message.sealed,
               let channel = channelKey(mine: key, theirs: message.agreementKey, ids: [me, message.from]),
               let box = try? ChaChaPoly.SealedBox(combined: sealed),
               let plain = try? ChaChaPoly.open(box, using: channel) else { return nil }
         return try? JSONDecoder().decode(TrustedUpdate.self, from: plain)
+    }
+}
+
+/// A text message between two trusted agents' people. Travels over the mesh, sealed.
+public struct TrustedNote: Codable, Equatable, Sendable {
+    public let fromName: String
+    public let text: String
+    public let sentAt: Date
+
+    public init(fromName: String, text: String, sentAt: Date) {
+        self.fromName = fromName
+        self.text = text
+        self.sentAt = sentAt
+    }
+}
+
+/// One line of the conversation with a trusted person, kept in local memory.
+public struct TrustedNoteEntry: Codable, Equatable, Identifiable, Sendable {
+    public let id: UUID
+    public let agentID: String
+    public let fromMe: Bool
+    public let text: String
+    public let at: Date
+
+    public init(id: UUID = UUID(), agentID: String, fromMe: Bool, text: String, at: Date) {
+        self.id = id
+        self.agentID = agentID
+        self.fromMe = fromMe
+        self.text = text
+        self.at = at
     }
 }

@@ -151,7 +151,7 @@ public enum OfflineAgent {
     static func detectResource(in text: String) -> ResourceKind? {
         let terms: [(ResourceKind, [String])] = [
             (.water, ["agua", "botella", "water", "bottle"]),
-            (.power, ["bateria", "cargador", "cargar", "carga", "energia", "electricidad", "power bank", "charger", "battery"]),
+            (.power, ["bateria", "cargador", "cargar", "carga", "energia", "electricidad", "power bank", "charger", "battery", "charge", "phone charge"]),
             (.transport, ["transporte", "auto", "carro", "vehiculo", "asiento", "llevar", "ride", "transport", "car"]),
             (.translation, ["traduccion", "traducir", "interprete", "translation", "translator"]),
             (.medicine, ["medicamento", "medicina", "remedio", "receta", "insulina", "pastilla", "medicine", "medication"]),

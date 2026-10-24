@@ -139,3 +139,31 @@ final class TrustedPeopleTests: XCTestCase {
                        TrustNetwork.pairingCode(juanID.agreementPublicKey, anaID.agreementPublicKey))
     }
 }
+
+final class TrustedNotesTests: XCTestCase {
+    func testNotesTravelSealedAndOnlyBetweenTrustedPeople() throws {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let ana = AgentIdentity.deterministic(seed: "ana"), juan = AgentIdentity.deterministic(seed: "juan"), eve = AgentIdentity.deterministic(seed: "eve")
+        func agent(_ id: AgentIdentity, _ name: String) -> PersonalAgent {
+            PersonalAgent(selfID: id.agentID, profile: AgentProfile(name: name, homeArea: "Lima"), policy: AgentPolicy(), agreementSecret: id.agreementPrivateKey.rawRepresentation)
+        }
+        func trusted(_ other: AgentIdentity, _ name: String) -> AgentMemory {
+            var memory = AgentMemory()
+            memory.trusted = [TrustedPerson(agentID: other.agentID, name: name, agreementKey: other.agreementPublicKey, status: .active, sharing: [.safety], theyShare: [.safety], since: now, pairingCode: "", lastSharedAt: nil)]
+            return memory
+        }
+
+        let sent = agent(ana, "Ana").sendNote(to: juan.agentID, text: "Estoy en el parque con Diego", memory: trusted(juan, "Juan"), now: now)
+        let note = try XCTUnwrap(sent.trustMessages.first)
+        XCTAssertEqual(note.kind, .note)
+        XCTAssertFalse(String(decoding: try JSONEncoder().encode(note), as: UTF8.self).contains("parque"))
+        XCTAssertEqual(sent.memory.trustedNotes.last?.fromMe, true)
+
+        let received = agent(juan, "Juan").step(state: MeshState(trustMessages: [note]), memory: trusted(ana, "Ana"), connectivity: .offline, now: now)
+        XCTAssertEqual(received.memory.trustedNotes.last?.text, "Estoy en el parque con Diego")
+        XCTAssertTrue(received.memory.log.contains { $0.title == "Ana: Estoy en el parque con Diego" })
+
+        XCTAssertNil(TrustNetwork.openNote(note, me: eve.agentID, with: eve.agreementPrivateKey))
+        XCTAssertTrue(agent(ana, "Ana").sendNote(to: eve.agentID, text: "hola", memory: trusted(juan, "Juan"), now: now).trustMessages.isEmpty, "not trusted")
+    }
+}

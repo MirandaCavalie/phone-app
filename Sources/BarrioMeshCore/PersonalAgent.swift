@@ -31,6 +31,8 @@ public struct AgentMemory: Codable, Equatable, Sendable {
     /// The latest decrypted snapshot from each trusted person, by agent id.
     public var trustedUpdates: [String: TrustedUpdate]
     public var handledTrustMessages: Set<UUID>
+    /// Text messages exchanged with trusted people, oldest first.
+    public var trustedNotes: [TrustedNoteEntry]
 
     public init() {
         emergencyActive = false
@@ -50,6 +52,7 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         trusted = []
         trustedUpdates = [:]
         handledTrustMessages = []
+        trustedNotes = []
     }
 
     public var activeTrusted: [TrustedPerson] { trusted.filter { $0.status == .active } }
@@ -74,6 +77,7 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         trusted = try c.decodeIfPresent([TrustedPerson].self, forKey: .trusted) ?? []
         trustedUpdates = try c.decodeIfPresent([String: TrustedUpdate].self, forKey: .trustedUpdates) ?? [:]
         handledTrustMessages = try c.decodeIfPresent(Set<UUID>.self, forKey: .handledTrustMessages) ?? []
+        trustedNotes = try c.decodeIfPresent([TrustedNoteEntry].self, forKey: .trustedNotes) ?? []
     }
 
     public var unsentOutbox: [OutboxItem] { outbox.filter { $0.sentAt == nil } }
@@ -499,6 +503,27 @@ public struct PersonalAgent: Sendable {
         return result
     }
 
+    /// Sends a short text to a trusted person over the mesh, sealed for them alone.
+    /// Works with no internet: any nearby phone relays it without being able to read it.
+    public func sendNote(to agentID: String, text: String, memory: AgentMemory, now: Date) -> AgentStepResult {
+        var result = AgentStepResult(memory: memory)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let key = agreementKey,
+              let person = memory.activeTrusted.first(where: { $0.agentID == agentID }),
+              let sealed = TrustNetwork.sealNote(TrustedNote(fromName: displayName, text: String(trimmed.prefix(500)), sentAt: now), from: selfID, to: person, with: key) else { return result }
+        result.trustMessages.append(TrustMessage(
+            kind: .note, from: selfID, fromName: displayName, to: agentID,
+            agreementKey: key.publicKey.rawRepresentation, sealed: sealed, sentAt: now
+        ))
+        result.memory.trustedNotes.append(TrustedNoteEntry(agentID: agentID, fromMe: true, text: trimmed, at: now))
+        result.memory.record(ActivityEntry(
+            date: now, kind: .family,
+            title: t("Mensaje a \(person.name)", "Message to \(person.name)"),
+            detail: t("Cifrado, viaja de teléfono en teléfono.", "Encrypted, hops phone to phone.")
+        ))
+        return result
+    }
+
     public func updateSharing(agentID: String, sharing: Set<TrustScope>, memory: AgentMemory) -> AgentMemory {
         var memory = memory
         if let index = memory.trusted.firstIndex(where: { $0.agentID == agentID }) {
@@ -564,6 +589,13 @@ public struct PersonalAgent: Sendable {
                 result.memory.trusted[index].status = .revoked
                 result.memory.trustedUpdates[message.from] = nil
                 result.memory.record(ActivityEntry(date: now, kind: .family, title: t("\(message.fromName) dejó de compartir contigo", "\(message.fromName) stopped sharing with you")))
+            case .note:
+                guard let index, result.memory.trusted[index].status == .active,
+                      result.memory.trusted[index].agreementKey == message.agreementKey,
+                      let key = agreementKey,
+                      let note = TrustNetwork.openNote(message, me: selfID, with: key) else { continue }
+                result.memory.trustedNotes.append(TrustedNoteEntry(agentID: message.from, fromMe: false, text: note.text, at: note.sentAt))
+                result.memory.record(ActivityEntry(date: now, kind: .family, title: "\(note.fromName): \(note.text)", detail: t("Mensaje cifrado de persona de confianza", "Encrypted message from a trusted person")))
             case .share:
                 guard let index, result.memory.trusted[index].status == .active,
                       result.memory.trusted[index].agreementKey == message.agreementKey,
