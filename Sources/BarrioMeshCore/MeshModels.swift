@@ -131,6 +131,7 @@ public struct MeshState: Codable, Equatable, Sendable {
     public var checkIns: [SafetyCheckIn]
     public var seismicReports: [SeismicReport]
     public var signatures: [ItemSignature]
+    public var hazardAlerts: [HazardAlert]
 
     public init(
         posts: [MeshPost] = [],
@@ -138,7 +139,8 @@ public struct MeshState: Codable, Equatable, Sendable {
         messages: [AgentMessage] = [],
         checkIns: [SafetyCheckIn] = [],
         seismicReports: [SeismicReport] = [],
-        signatures: [ItemSignature] = []
+        signatures: [ItemSignature] = [],
+        hazardAlerts: [HazardAlert] = []
     ) {
         self.posts = posts
         self.proposals = proposals
@@ -146,6 +148,7 @@ public struct MeshState: Codable, Equatable, Sendable {
         self.checkIns = checkIns
         self.seismicReports = seismicReports
         self.signatures = signatures
+        self.hazardAlerts = hazardAlerts
     }
 
     public init(from decoder: Decoder) throws {
@@ -157,6 +160,7 @@ public struct MeshState: Codable, Equatable, Sendable {
         checkIns = try container.decodeIfPresent([SafetyCheckIn].self, forKey: .checkIns) ?? []
         seismicReports = try container.decodeIfPresent([SeismicReport].self, forKey: .seismicReports) ?? []
         signatures = try container.decodeIfPresent([ItemSignature].self, forKey: .signatures) ?? []
+        hazardAlerts = try container.decodeIfPresent([HazardAlert].self, forKey: .hazardAlerts) ?? []
     }
 
     public func messages(for proposalID: String) -> [AgentMessage] {
@@ -319,7 +323,7 @@ public struct SafetyCheckIn: Codable, Identifiable, Hashable, Sendable {
 }
 
 public struct MeshWireMessage: Codable, Sendable {
-    public static let currentProtocolVersion = 4
+    public static let currentProtocolVersion = 5
 
     public let protocolVersion: Int
     public let senderID: String

@@ -21,6 +21,8 @@ public struct AgentMemory: Codable, Equatable, Sendable {
     public var seenAgreements: Set<String>
     public var seenCheckIns: Set<UUID>
     public var lastConnectivity: Connectivity?
+    /// Official event ids already handled, however many phones relayed them.
+    public var seenHazards: Set<String>
 
     public init() {
         emergencyActive = false
@@ -35,6 +37,25 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         seenAgreements = []
         seenCheckIns = []
         lastConnectivity = nil
+        seenHazards = []
+    }
+
+    public init(from decoder: Decoder) throws {
+        // Memory saved by an older build keeps working when new fields are added.
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        emergencyActive = try c.decodeIfPresent(Bool.self, forKey: .emergencyActive) ?? false
+        emergencyStartedAt = try c.decodeIfPresent(Date.self, forKey: .emergencyStartedAt)
+        publishedFromProfile = try c.decodeIfPresent([String: UUID].self, forKey: .publishedFromProfile) ?? [:]
+        checkedInAt = try c.decodeIfPresent(Date.self, forKey: .checkedInAt)
+        log = try c.decodeIfPresent([ActivityEntry].self, forKey: .log) ?? []
+        pending = try c.decodeIfPresent([PendingApproval].self, forKey: .pending) ?? []
+        dismissedKeys = try c.decodeIfPresent(Set<String>.self, forKey: .dismissedKeys) ?? []
+        followUps = try c.decodeIfPresent([FollowUp].self, forKey: .followUps) ?? []
+        outbox = try c.decodeIfPresent([OutboxItem].self, forKey: .outbox) ?? []
+        seenAgreements = try c.decodeIfPresent(Set<String>.self, forKey: .seenAgreements) ?? []
+        seenCheckIns = try c.decodeIfPresent(Set<UUID>.self, forKey: .seenCheckIns) ?? []
+        lastConnectivity = try c.decodeIfPresent(Connectivity.self, forKey: .lastConnectivity)
+        seenHazards = try c.decodeIfPresent(Set<String>.self, forKey: .seenHazards) ?? []
     }
 
     public var unsentOutbox: [OutboxItem] { outbox.filter { $0.sentAt == nil } }
@@ -60,6 +81,7 @@ public struct ActivityEntry: Codable, Equatable, Identifiable, Sendable {
         case followUp
         case approval
         case outbox
+        case alert
     }
 
     public let id: UUID
@@ -236,6 +258,7 @@ public struct PersonalAgent: Sendable {
 
         observeConnectivity(connectivity, result: &result, now: now)
         observeSeismicReports(state.seismicReports, result: &result, now: now)
+        observeHazardAlerts(state.hazardAlerts, result: &result, now: now)
 
         if result.memory.emergencyActive {
             checkIn(result: &result, now: now)
@@ -368,6 +391,37 @@ public struct PersonalAgent: Sendable {
         let phones = SeismicCorroboration.devices(near: now, in: recent)
         guard phones.count >= 2 else { return }
         result.memory = activateForEarthquake(nil, phones: phones.count, memory: result.memory, now: now)
+    }
+
+    // MARK: - Official alerts
+
+    /// Official quake/tsunami alerts, fetched by any phone with internet and relayed over the mesh.
+    /// Dangerous ones nearby start emergency mode before the network collapses.
+    private func observeHazardAlerts(_ alerts: [HazardAlert], result: inout AgentStepResult, now: Date) {
+        let home = profile.isConfigured ? profile.approximateLocation.point : nil
+        for alert in alerts.sorted(by: { $0.occurredAt < $1.occurredAt })
+        where !result.memory.seenHazards.contains(alert.eventID) && now.timeIntervalSince(alert.occurredAt) < 6 * 3_600 {
+            result.memory.seenHazards.insert(alert.eventID)
+            let assessment = HazardAssessment.assess(alert, home: home)
+            guard assessment.level > .ignore else { continue }
+
+            let source = alert.isSimulated ? "Simulación" : alert.source
+            let relayed = alert.relayedBy == selfID ? "" : " Me llegó por la red de teléfonos cercanos."
+            result.memory.record(ActivityEntry(
+                date: now,
+                kind: .alert,
+                title: assessment.headline,
+                detail: "\(source): \(alert.place). \(assessment.advice)\(relayed)"
+            ))
+
+            if assessment.level == .danger, policy.activateOnOfficialAlert, !result.memory.emergencyActive {
+                result.memory = activateEmergency(
+                    memory: result.memory,
+                    reason: "Alerta oficial (\(source)): \(assessment.headline). Me adelanto antes de que se caiga la red.",
+                    now: now
+                )
+            }
+        }
     }
 
     // MARK: - Check-in

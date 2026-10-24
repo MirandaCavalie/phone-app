@@ -96,6 +96,7 @@ public final class MeshStore: @unchecked Sendable {
             changed = Self.union(&storedState.checkIns, with: incoming.checkIns) || changed
             changed = Self.union(&storedState.seismicReports, with: incoming.seismicReports) || changed
             changed = Self.union(&storedState.signatures, with: incoming.signatures) || changed
+            changed = Self.unionHazards(&storedState.hazardAlerts, with: incoming.hazardAlerts) || changed
 
             if changed { persistLocked() }
             return changed
@@ -127,6 +128,26 @@ public final class MeshStore: @unchecked Sendable {
             persistLocked()
             return true
         }
+    }
+
+    /// Adds official alerts, keeping one copy per source event however many phones relayed it.
+    @discardableResult
+    public func add(_ alerts: [HazardAlert]) -> Bool {
+        lock.withLock {
+            guard Self.unionHazards(&storedState.hazardAlerts, with: alerts) else { return false }
+            persistLocked()
+            return true
+        }
+    }
+
+    static func unionHazards(_ alerts: inout [HazardAlert], with incoming: [HazardAlert]) -> Bool {
+        var known = Set(alerts.map(\.eventID))
+        var changed = false
+        for alert in incoming where known.insert(alert.eventID).inserted {
+            alerts.append(alert)
+            changed = true
+        }
+        return changed
     }
 
     @discardableResult
@@ -172,9 +193,9 @@ public final class MeshStore: @unchecked Sendable {
     @discardableResult
     public func compact(now: Date = Date(), retention: TimeInterval = MeshStore.defaultRetention) -> Bool {
         lock.withLock {
-            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count)
+            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count + storedState.hazardAlerts.count)
             storedState = Self.compacted(storedState, now: now, retention: retention)
-            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count)
+            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count + storedState.hazardAlerts.count)
             guard before != after else { return false }
             persistLocked()
             return true
@@ -200,11 +221,13 @@ public final class MeshStore: @unchecked Sendable {
         }
         let checkIns = state.checkIns.filter { newest["\($0.circleID)|\($0.authorID)"]?.id == $0.id }
         let seismicReports = state.seismicReports.filter { $0.detectedAt >= cutoff }
+        let hazardAlerts = state.hazardAlerts.filter { $0.occurredAt >= cutoff }
 
-        let liveIDs = Set(posts.map(\.id)).union(messages.map(\.id)).union(checkIns.map(\.id)).union(seismicReports.map(\.id))
+        let liveIDs = Set(posts.map(\.id)).union(messages.map(\.id)).union(checkIns.map(\.id))
+            .union(seismicReports.map(\.id)).union(hazardAlerts.map(\.id))
         let signatures = state.signatures.filter { liveIDs.contains($0.itemID) }
 
-        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports, signatures: signatures)
+        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports, signatures: signatures, hazardAlerts: hazardAlerts)
     }
 
     static func isStale(_ post: MeshPost, cutoff: Date) -> Bool {

@@ -49,6 +49,11 @@ public struct AgentProfile: Codable, Equatable, Sendable {
     }
 
     /// How ready the household is for an outage, from 0 to 100.
+    /// Approximate location used only to measure distance to official alerts. Never shared.
+    public var approximateLocation: (point: GeoPoint, label: String) {
+        Places.locate(area: homeArea, country: country)
+    }
+
     public var preparedness: PreparednessReport {
         Preparedness.evaluate(self)
     }
