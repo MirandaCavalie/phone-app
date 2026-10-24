@@ -15,7 +15,7 @@ struct PaperworkView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Label("Guion para llamar al \(script.number)", systemImage: "phone.fill")
+                        Label(t("Guion para llamar al \(script.number)", "Script for calling \(script.number)"), systemImage: "phone.fill")
                             .font(.headline)
                         Text("Si logras comunicarte, lee esto. Ya incluye quién es vulnerable en tu hogar y qué falta.")
                             .font(.caption)
@@ -29,7 +29,7 @@ struct PaperworkView: View {
                             Button {
                                 if let url = URL(string: "tel://\(script.number)") { openURL(url) }
                             } label: {
-                                Label("Llamar al \(script.number)", systemImage: "phone.arrow.up.right.fill")
+                                Label(t("Llamar al \(script.number)", "Call \(script.number)"), systemImage: "phone.arrow.up.right.fill")
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
@@ -38,7 +38,7 @@ struct PaperworkView: View {
                             Button {
                                 model.narrator.speak(script.text, country: model.profile.country)
                             } label: {
-                                Label("Escuchar", systemImage: "speaker.wave.2.fill")
+                                Label(t("Escuchar", "Listen"), systemImage: "speaker.wave.2.fill")
                             }
                             .buttonStyle(.bordered)
                         }
@@ -46,7 +46,7 @@ struct PaperworkView: View {
                     .faroCard()
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Label("Reporte de afectación prellenado", systemImage: "doc.text.fill")
+                        Label(t("Reporte de afectación prellenado", "Pre-filled damage report"), systemImage: "doc.text.fill")
                             .font(.headline)
                         Text("Para el registro de damnificados, tu aseguradora o una organización de ayuda. Revísalo y compártelo cuando vuelva la señal.")
                             .font(.caption)
@@ -56,13 +56,13 @@ struct PaperworkView: View {
                         HStack {
                             if let pdfURL {
                                 ShareLink(item: pdfURL) {
-                                    Label("Compartir PDF", systemImage: "square.and.arrow.up")
+                                    Label(t("Compartir PDF", "Share PDF"), systemImage: "square.and.arrow.up")
                                         .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(.borderedProminent)
                             }
                             ShareLink(item: report.plainText) {
-                                Label("Texto", systemImage: "text.alignleft")
+                                Label(t("Texto", "Text"), systemImage: "text.alignleft")
                             }
                             .buttonStyle(.bordered)
                         }
@@ -72,10 +72,10 @@ struct PaperworkView: View {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Trámites listos")
+            .navigationTitle(t("Trámites listos", "Calls & forms ready"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Listo") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(t("Listo", "Done")) { dismiss() } }
             }
             .task { pdfURL = ReportDocument.renderPDF(report) }
         }

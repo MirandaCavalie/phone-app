@@ -10,8 +10,8 @@ enum AgentEngine: Sendable {
 
     var displayName: String {
         switch self {
-        case .appleIntelligence: "Apple Intelligence local"
-        case .localRules: "Motor local"
+        case .appleIntelligence: t("Apple Intelligence en el teléfono", "On-device Apple Intelligence")
+        case .localRules: t("Motor local", "Local engine")
         }
     }
 }

@@ -41,11 +41,11 @@ struct AskFaroView: View {
             }
             .background(Color(.systemGroupedBackground))
             .safeAreaInset(edge: .bottom) { inputBar }
-            .navigationTitle("Háblale a Faro")
+            .navigationTitle(t("Háblale a Faro", "Talk to Faro"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") { dismiss() }
+                    Button(t("Listo", "Done")) { dismiss() }
                 }
             }
             .sheet(item: $composing) { draft in
@@ -61,7 +61,7 @@ struct AskFaroView: View {
                 Text("Pregúntame por tu familia, tus encuentros o tu kit. También puedes pedir u ofrecer ayuda. Mantén presionado el micrófono para hablarme.")
                     .font(.subheadline)
             }
-            Label("Todo se procesa en este iPhone. Sin internet, sin API.", systemImage: "lock.iphone")
+            Label(t("Todo se procesa en este iPhone. Sin internet, sin API.", "Runs on this iPhone. No internet, no API."), systemImage: "lock.iphone")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -79,11 +79,11 @@ struct AskFaroView: View {
 
     private var suggestions: [String] {
         [
-            "¿Mi familia está bien?",
-            "¿Qué tengo acordado?",
-            "¿Qué me falta en el kit?",
-            "¿Quién está cerca?",
-            "Necesito 2 cargas para el teléfono en \(model.profile.homeArea.isEmpty ? "Chapinero" : model.profile.homeArea)"
+            t("¿Mi familia está bien?", "Is my family OK?"),
+            t("¿Qué tengo acordado?", "What handoffs do I have?"),
+            t("¿Qué me falta en el kit?", "What is missing from my kit?"),
+            t("¿Quién está cerca?", "Who is nearby?"),
+            t("Necesito 2 cargas de teléfono en \(model.profile.homeArea)", "I need 2 phone charges in \(model.profile.homeArea)")
         ]
     }
 
@@ -100,7 +100,7 @@ struct AskFaroView: View {
                 Text(turn.text)
                 if let draft = turn.draft {
                     if !draft.missingFields.isEmpty {
-                        Label("Falta \(draft.missingFields.map(\.displayName).joined(separator: " y ")).", systemImage: "questionmark.bubble")
+                        Label(t("Falta \(draft.missingFields.map(\.displayName).joined(separator: " y ")).", "Missing \(draft.missingFields.map(\.displayName).joined(separator: " and "))."), systemImage: "questionmark.bubble")
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
@@ -109,7 +109,7 @@ struct AskFaroView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
-                    Button("Revisar y publicar") { composing = draft }
+                    Button(t("Revisar y publicar", "Review and post")) { composing = draft }
                         .buttonStyle(.borderedProminent)
                 }
                 if let engine = turn.engine {
@@ -127,7 +127,7 @@ struct AskFaroView: View {
     private var inputBar: some View {
         VStack(spacing: 6) {
             if listener.isListening {
-                Label(listener.transcript.isEmpty ? "Te escucho…" : listener.transcript, systemImage: "waveform")
+                Label(listener.transcript.isEmpty ? t("Te escucho…", "Listening…") : listener.transcript, systemImage: "waveform")
                     .font(.subheadline)
                     .symbolEffect(.variableColor.iterative, options: .repeating)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -162,13 +162,13 @@ struct AskFaroView: View {
                         if !heard.isEmpty { send(heard, spoken: true) }
                     }
             )
-            .accessibilityLabel("Mantén presionado para hablarle a Faro")
+            .accessibilityLabel(t("Mantén presionado para hablarle a Faro", "Hold to talk to Faro"))
             .accessibilityAddTraits(.isButton)
     }
 
     private var textInput: some View {
         HStack(spacing: 10) {
-            TextField("Escríbele a Faro", text: $message, axis: .vertical)
+            TextField(t("Escríbele a Faro", "Message Faro"), text: $message, axis: .vertical)
                 .lineLimit(1...4)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit { send(message) }
@@ -194,7 +194,7 @@ struct AskFaroView: View {
                 let result = await PersonalAgentInterpreter.interpret(cleaned, emergencyNumber: model.profile.country.emergencyNumber)
                 var draft = result.draft
                 if draft.area.isEmpty { draft.area = model.profile.homeArea }
-                turns.append(Turn(fromUser: false, text: draft.summary + " Revísalo antes de publicarlo.", draft: draft, engine: result.engine))
+                turns.append(Turn(fromUser: false, text: draft.summary + t(" Revísalo antes de publicarlo.", " Review it before posting."), draft: draft, engine: result.engine))
             } else {
                 let (answer, engine) = await AgentBrain.answer(cleaned, snapshot: model.snapshot)
                 turns.append(Turn(fromUser: false, text: answer, engine: engine))
@@ -210,7 +210,8 @@ struct AskFaroView: View {
     static func looksLikeRequest(_ text: String) -> Bool {
         let lower = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es"))
         guard !lower.contains("?") else { return false }
-        let verbs = ["necesito", "necesitamos", "busco", "me falta", "ofrezco", "puedo ofrecer", "puedo ayudar", "tengo", "comparto"]
+        let verbs = ["necesito", "necesitamos", "busco", "me falta", "ofrezco", "puedo ofrecer", "puedo ayudar", "tengo", "comparto",
+                     "i need", "we need", "looking for", "i can offer", "i can help", "i have", "we have"]
         return verbs.contains(where: lower.contains) && OfflineAgent.interpret(text).resource != nil
     }
 }

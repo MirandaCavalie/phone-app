@@ -11,7 +11,7 @@ final class PeerSession: NSObject, ObservableObject, @unchecked Sendable {
     }
 
     @Published private(set) var connectedPeerNames: [String] = []
-    @Published private(set) var statusText = "Buscando teléfonos cercanos"
+    @Published private(set) var statusText = t("Buscando teléfonos cercanos", "Looking for nearby phones")
     @Published private(set) var lastError: String?
 
     var onData: ((Data) -> Void)?
@@ -79,11 +79,11 @@ final class PeerSession: NSObject, ObservableObject, @unchecked Sendable {
 
     private func updateStatus() {
         if connectedPeerNames.isEmpty {
-            statusText = "Buscando teléfonos cercanos"
+            statusText = t("Buscando teléfonos cercanos", "Looking for nearby phones")
         } else if connectedPeerNames.count == 1 {
-            statusText = "1 teléfono conectado"
+            statusText = t("1 teléfono conectado", "1 phone connected")
         } else {
-            statusText = "\(connectedPeerNames.count) teléfonos conectados"
+            statusText = t("\(connectedPeerNames.count) teléfonos conectados", "\(connectedPeerNames.count) phones connected")
         }
     }
 }
@@ -100,7 +100,7 @@ extension PeerSession: MCNearbyServiceAdvertiserDelegate {
 
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
         DispatchQueue.main.async { [weak self] in
-            self?.lastError = "No se pudo anunciar este teléfono: \(error.localizedDescription)"
+            self?.lastError = t("No se pudo anunciar este teléfono: \(error.localizedDescription)", "Could not advertise this phone: \(error.localizedDescription)")
         }
     }
 }
@@ -125,7 +125,7 @@ extension PeerSession: MCNearbyServiceBrowserDelegate {
 
     func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
         DispatchQueue.main.async { [weak self] in
-            self?.lastError = "No se pudieron buscar teléfonos: \(error.localizedDescription)"
+            self?.lastError = t("No se pudieron buscar teléfonos: \(error.localizedDescription)", "Could not browse for phones: \(error.localizedDescription)")
         }
     }
 }

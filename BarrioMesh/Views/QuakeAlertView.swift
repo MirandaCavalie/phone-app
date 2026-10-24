@@ -55,7 +55,7 @@ struct QuakeAlertView: View {
                     .tint(.white)
                     .foregroundStyle(FaroTheme.ember)
 
-                    Button("Falsa alarma, cancelar") { model.cancelQuakeAlert() }
+                    Button(t("Falsa alarma, cancelar", "False alarm, cancel")) { model.cancelQuakeAlert() }
                         .font(.headline)
                         .tint(.white)
                 }

@@ -46,6 +46,7 @@
 		10000000000000000000002A /* MeshRadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* MeshRadarView.swift */; };
 		10000000000000000000002B /* HazardAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* HazardAlerts.swift */; };
 		10000000000000000000002C /* HazardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002C /* HazardMonitor.swift */; };
+		10000000000000000000002D /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002D /* Localization.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -93,6 +94,7 @@
 		20000000000000000000002A /* MeshRadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshRadarView.swift; sourceTree = "<group>"; };
 		20000000000000000000002B /* HazardAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardAlerts.swift; sourceTree = "<group>"; };
 		20000000000000000000002C /* HazardMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardMonitor.swift; sourceTree = "<group>"; };
+		20000000000000000000002D /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +175,7 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002D /* Localization.swift */,
 				20000000000000000000002B /* HazardAlerts.swift */,
 				200000000000000000000028 /* Paperwork.swift */,
 				200000000000000000000025 /* MeshSecurity.swift */,
@@ -257,9 +260,10 @@
 			};
 			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "BarrioMesh" */;
 			compatibilityVersion = "Xcode 15.0";
-			developmentRegion = es;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				en,
 				es,
 				Base,
 			);
@@ -289,6 +293,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10000000000000000000002D /* Localization.swift in Sources */,
 				10000000000000000000002C /* HazardMonitor.swift in Sources */,
 				10000000000000000000002B /* HazardAlerts.swift in Sources */,
 				10000000000000000000002A /* MeshRadarView.swift in Sources */,

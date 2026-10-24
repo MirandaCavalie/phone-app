@@ -5,9 +5,15 @@ struct NeighborsView: View {
     @EnvironmentObject private var model: AppModel
 
     private enum Section: String, CaseIterable, Identifiable {
-        case board = "Pedidos y ofertas"
-        case matches = "Coordinación"
+        case board
+        case matches
         var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .board: t("Pedidos y ofertas", "Needs & offers")
+            case .matches: t("Coordinación", "Handoffs")
+            }
+        }
     }
 
     @State private var section: Section = .board
@@ -15,8 +21,8 @@ struct NeighborsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Sección", selection: $section) {
-                    ForEach(Section.allCases) { Text($0.rawValue).tag($0) }
+                Picker(t("Sección", "Section"), selection: $section) {
+                    ForEach(Section.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
@@ -28,7 +34,7 @@ struct NeighborsView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Vecinos")
+            .navigationTitle(t("Vecinos", "Neighbors"))
         }
     }
 }

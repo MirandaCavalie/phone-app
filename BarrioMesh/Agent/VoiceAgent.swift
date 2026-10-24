@@ -16,7 +16,7 @@ final class SpeechListener: ObservableObject {
     private var recognizer: SFSpeechRecognizer?
 
     func configure(for country: Country) {
-        let locale = Locale(identifier: Self.localeIdentifier(for: country))
+        let locale = Locale(identifier: Lang.isSpanish ? Self.localeIdentifier(for: country) : "en-US")
         recognizer = SFSpeechRecognizer(locale: locale) ?? SFSpeechRecognizer(locale: Locale(identifier: "es-MX"))
         isOnDevice = recognizer?.supportsOnDeviceRecognition == true
     }
@@ -24,11 +24,11 @@ final class SpeechListener: ObservableObject {
     func start() async {
         problem = nil
         guard await Self.authorize() else {
-            problem = "Activa el micrófono y el reconocimiento de voz en Ajustes para hablarle a Faro."
+            problem = t("Activa el micrófono y el reconocimiento de voz en Ajustes.", "Allow microphone and speech recognition in Settings.")
             return
         }
         guard let recognizer, recognizer.isAvailable else {
-            problem = "El reconocimiento de voz no está disponible ahora."
+            problem = t("El reconocimiento de voz no está disponible.", "Speech recognition is not available.")
             return
         }
 
@@ -52,7 +52,7 @@ final class SpeechListener: ObservableObject {
             try engine.start()
             isListening = true
         } catch {
-            problem = "No pude usar el micrófono."
+            problem = t("No pude usar el micrófono.", "Could not use the microphone.")
             stopEngine()
             return
         }
@@ -136,8 +136,9 @@ final class Narrator {
 
     func speak(_ text: String, country: Country) {
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: SpeechListener.localeIdentifier(for: country))
-            ?? AVSpeechSynthesisVoice(language: "es-MX")
+        let voiceLanguage = Lang.isSpanish ? SpeechListener.localeIdentifier(for: country) : "en-US"
+        utterance.voice = AVSpeechSynthesisVoice(language: voiceLanguage)
+            ?? AVSpeechSynthesisVoice(language: Lang.isSpanish ? "es-MX" : "en-US")
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 1.02
         synthesizer.speak(utterance)
     }
@@ -150,6 +151,6 @@ final class Narrator {
     private static func spokenDetail(_ detail: String) -> String {
         detail
             .replacingOccurrences(of: " · ", with: ", ")
-            .components(separatedBy: ". Llegó por la red").first ?? detail
+            .replacingOccurrences(of: " · ", with: ". ")
     }
 }

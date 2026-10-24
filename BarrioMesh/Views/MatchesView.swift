@@ -8,7 +8,7 @@ struct MatchesView: View {
                 VStack(spacing: 14) {
                     if model.matchSummaries.isEmpty {
                         ContentUnavailableView {
-                            Label("Todavía no hay matches", systemImage: "arrow.left.arrow.right")
+                            Label(t("Todavía no hay matches", "No matches yet"), systemImage: "arrow.left.arrow.right")
                         } description: {
                             Text("Cuando una necesidad y una oferta sean compatibles, los agentes negocian y aparecen aquí.")
                         }
@@ -40,14 +40,14 @@ private struct MatchCard: View {
             HStack(spacing: 10) {
                 person(
                     title: summary.candidate.need.authorName,
-                    subtitle: "Necesita \(summary.candidate.need.quantity) \(summary.candidate.need.unit)",
+                    subtitle: t("Necesita \(summary.candidate.need.resource.count(summary.candidate.need.quantity))", "Needs \(summary.candidate.need.resource.count(summary.candidate.need.quantity))"),
                     color: .orange
                 )
                 Image(systemName: "arrow.left.arrow.right")
                     .foregroundStyle(.secondary)
                 person(
                     title: summary.candidate.offer.authorName,
-                    subtitle: "Ofrece \(summary.candidate.offer.quantity) \(summary.candidate.offer.unit)",
+                    subtitle: t("Ofrece \(summary.candidate.offer.resource.count(summary.candidate.offer.quantity))", "Offers \(summary.candidate.offer.resource.count(summary.candidate.offer.quantity))"),
                     color: .green
                 )
             }
@@ -62,7 +62,7 @@ private struct MatchCard: View {
 
             if let whatsAppURL {
                 Link(destination: whatsAppURL) {
-                    Label("Abrir en WhatsApp", systemImage: "arrow.up.forward.app")
+                    Label(t("Abrir en WhatsApp", "Open in WhatsApp"), systemImage: "arrow.up.forward.app")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -87,10 +87,10 @@ private struct MatchCard: View {
                         Image(systemName: icon(for: message.kind))
                             .foregroundStyle(.purple)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Agente de \(message.senderName): \(verb(for: message.kind))")
+                            Text(t("Agente de \(message.senderName): \(verb(for: message.kind))", "\(message.senderName)'s agent: \(verb(for: message.kind))"))
                                 .font(.caption.weight(.semibold))
                             if let terms = message.terms, message.kind != .accept {
-                                Text("\(terms.quantity) en \(terms.meetingPoint), \(terms.meetAt.formatted(date: .omitted, time: .shortened))")
+                                Text("\(terms.quantity) · \(terms.meetingPoint) · \(terms.meetAt.formatted(date: .omitted, time: .shortened))")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -115,10 +115,10 @@ private struct MatchCard: View {
 
     private func verb(for kind: AgentMessage.Kind) -> String {
         switch kind {
-        case .propose: "propone"
-        case .counter: "contraoferta"
-        case .accept: "acepta"
-        case .decline: "rechaza"
+        case .propose: t("propone", "proposes")
+        case .counter: t("contraoferta", "counters")
+        case .accept: t("acepta", "accepts")
+        case .decline: t("rechaza", "declines")
         }
     }
 
@@ -151,17 +151,17 @@ private struct MatchCard: View {
         let need = summary.candidate.need
         let offer = summary.candidate.offer
 
-        return """
-        🤝 Faro encontró una coincidencia
-
-        \(need.resource.displayName)
-        • \(need.authorName) necesita \(need.quantity) \(need.unit)
-        • \(offer.authorName) puede ofrecer \(offer.quantity) \(offer.unit)
-        • Zona aproximada: \(need.area)
-        • Estado: \(summary.status.displayName)
-
-        Coordina un punto público y no compartas direcciones exactas hasta confirmar el encuentro.
-        """
+        return [
+            t("🤝 Faro encontró una coincidencia", "🤝 Faro found a match"),
+            "",
+            need.resource.displayName,
+            "• \(need.authorName) \(t("necesita", "needs")) \(need.resource.count(need.quantity))",
+            "• \(offer.authorName) \(t("ofrece", "offers")) \(offer.resource.count(offer.quantity))",
+            "• \(t("Zona", "Area")): \(need.area)",
+            "• \(t("Estado", "Status")): \(summary.status.displayName)",
+            "",
+            t("Coordina en un lugar público, sin direcciones exactas.", "Meet somewhere public; no exact addresses.")
+        ].joined(separator: "\n")
     }
 
     @ViewBuilder
@@ -169,39 +169,39 @@ private struct MatchCard: View {
         let isParticipant = summary.requiredPeers.contains(model.deviceID)
 
         if !isParticipant {
-            Label("Este teléfono está retransmitiendo la coincidencia.", systemImage: "point.3.connected.trianglepath.dotted")
+            Label(t("Este teléfono está retransmitiendo la coincidencia.", "This phone is relaying this match."), systemImage: "point.3.connected.trianglepath.dotted")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } else {
             switch summary.status {
             case .suggested, .waiting:
                 if summary.isAgentNegotiated {
-                    Label("Los agentes están negociando. Si necesitan tu OK, aparece en Inicio.", systemImage: "sparkles")
+                    Label(t("Los agentes están negociando. Si necesitan tu OK, aparece en Inicio.", "Agents are negotiating. If they need you, it shows on Home."), systemImage: "sparkles")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else if model.hasApproved(summary) {
-                    Label("Confirmado por ti; falta la otra persona.", systemImage: "clock")
+                    Label(t("Confirmado por ti; falta la otra persona.", "You confirmed; waiting for the other person."), systemImage: "clock")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {
                     HStack {
-                        Button("Confirmar") { model.approve(summary) }
+                        Button(t("Confirmar", "Confirm")) { model.approve(summary) }
                             .buttonStyle(.borderedProminent)
-                        Button("Rechazar", role: .destructive) { model.decline(summary) }
+                        Button(t("Rechazar", "Decline"), role: .destructive) { model.decline(summary) }
                             .buttonStyle(.bordered)
                     }
                 }
             case .accepted:
                 if model.hasCompleted(summary) {
-                    Label("Marcado como entregado; falta la otra confirmación.", systemImage: "checkmark.circle")
+                    Label(t("Marcado como entregado; falta la otra confirmación.", "Marked delivered; waiting for the other side."), systemImage: "checkmark.circle")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {
-                    Button("Marcar ayuda como entregada") { model.complete(summary) }
+                    Button(t("Marcar ayuda como entregada", "Mark as delivered")) { model.complete(summary) }
                         .buttonStyle(.borderedProminent)
                 }
             case .completed:
-                Label("Ambas personas confirmaron la entrega.", systemImage: "checkmark.seal.fill")
+                Label(t("Ambas personas confirmaron la entrega.", "Both confirmed the handoff."), systemImage: "checkmark.seal.fill")
                     .foregroundStyle(.green)
             case .declined:
                 EmptyView()

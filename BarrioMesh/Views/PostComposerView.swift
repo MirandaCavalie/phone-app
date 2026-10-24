@@ -29,28 +29,28 @@ struct PostComposerView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Recurso") {
-                    Picker("Categoría", selection: $resource) {
+                Section(t("Recurso", "Resource")) {
+                    Picker(t("Categoría", "Category"), selection: $resource) {
                         ForEach(ResourceKind.allCases) { resource in
                             Label(resource.displayName, systemImage: resource.systemImage)
                                 .tag(resource)
                         }
                     }
 
-                    Stepper("Cantidad: \(quantity)", value: $quantity, in: 1...99)
-                    TextField("Unidad", text: $unit)
+                    Stepper(t("Cantidad: \(quantity)", "Quantity: \(quantity)"), value: $quantity, in: 1...99)
+                    TextField(t("Unidad", "Unit"), text: $unit)
                 }
 
-                Section("Ubicación y prioridad") {
-                    TextField("Zona aproximada, por ejemplo Mission", text: $area)
-                    Picker("Prioridad", selection: $urgency) {
+                Section(t("Ubicación y prioridad", "Area and priority")) {
+                    TextField(t("Zona aproximada, por ejemplo Mission", "Approximate area, e.g. Miraflores"), text: $area)
+                    Picker(t("Prioridad", "Priority"), selection: $urgency) {
                         ForEach(Urgency.allCases) { urgency in
                             Text(urgency.displayName).tag(urgency)
                         }
                     }
                     .pickerStyle(.segmented)
 
-                    Picker("Vence en", selection: $expiryHours) {
+                    Picker(t("Vence en", "Expires in"), selection: $expiryHours) {
                         Text("1 hora").tag(1)
                         Text("4 horas").tag(4)
                         Text("12 horas").tag(12)
@@ -58,8 +58,8 @@ struct PostComposerView: View {
                     }
                 }
 
-                Section("Detalle opcional") {
-                    TextField("Información útil, sin datos sensibles", text: $note, axis: .vertical)
+                Section(t("Detalle opcional", "Optional detail")) {
+                    TextField(t("Información útil, sin datos sensibles", "Useful info, nothing sensitive"), text: $note, axis: .vertical)
                         .lineLimit(2...5)
                 }
 
@@ -73,10 +73,10 @@ struct PostComposerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
+                    Button(t("Cancelar", "Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Publicar") {
+                    Button(t("Publicar", "Post")) {
                         model.addPost(
                             kind: kind,
                             resource: resource,

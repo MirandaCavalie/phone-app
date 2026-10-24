@@ -14,8 +14,8 @@ struct BoardView: View {
                     if model.activePosts.isEmpty {
                         emptyState
                     } else {
-                        postSection(title: "Necesidades", posts: model.activeNeeds)
-                        postSection(title: "Ofertas", posts: model.activeOffers)
+                        postSection(title: t("Necesidades", "Needs"), posts: model.activeNeeds)
+                        postSection(title: t("Ofertas", "Offers"), posts: model.activeOffers)
                     }
                 }
                 .padding()
@@ -30,7 +30,7 @@ struct BoardView: View {
             Button {
                 composerKind = .need
             } label: {
-                Label("Necesito ayuda", systemImage: "hand.raised.fill")
+                Label(t("Necesito ayuda", "I need help"), systemImage: "hand.raised.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -38,7 +38,7 @@ struct BoardView: View {
             Button {
                 composerKind = .offer
             } label: {
-                Label("Puedo ayudar", systemImage: "hands.sparkles.fill")
+                Label(t("Puedo ayudar", "I can help"), systemImage: "hands.sparkles.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -48,7 +48,7 @@ struct BoardView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("La red está lista", systemImage: "dot.radiowaves.left.and.right")
+            Label(t("La red está lista", "The network is ready"), systemImage: "dot.radiowaves.left.and.right")
         } description: {
             Text("Publica una necesidad u oferta, o deja que Faro lo haga desde tu perfil. Se comparte cuando aparece otro teléfono.")
         }
@@ -95,7 +95,7 @@ private struct PostCard: View {
                     }
                 }
 
-                Text("\(post.quantity) \(post.unit) · \(post.area)")
+                Text("\(post.resource.count(post.quantity)) · \(post.area)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -116,7 +116,7 @@ private struct PostCard: View {
                 .foregroundStyle(.secondary)
 
                 if post.authorID == model.deviceID {
-                    Button("Cerrar publicación", role: .destructive) {
+                    Button(t("Cerrar publicación", "Close post"), role: .destructive) {
                         model.close(post)
                     }
                     .font(.caption)
@@ -138,8 +138,8 @@ private struct PostCard: View {
                     .tint(post.kind == .need ? FaroTheme.safe : .orange)
                     .frame(maxWidth: 90)
                 Text(post.kind == .need
-                     ? (covered ? "Cubierto por acuerdo" : "\(agreed) de \(post.quantity) asegurados")
-                     : (covered ? "Todo comprometido" : "Quedan \(post.quantity - agreed)"))
+                     ? (covered ? t("Cubierto por acuerdo", "Covered") : t("\(agreed) de \(post.quantity) asegurados", "\(agreed) of \(post.quantity) secured"))
+                     : (covered ? t("Todo comprometido", "All promised") : t("Quedan \(post.quantity - agreed)", "\(post.quantity - agreed) left")))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(post.kind == .need ? FaroTheme.safe : .orange)
             }
@@ -159,8 +159,8 @@ struct ConnectionBanner: View {
                 Text(model.peerSession.statusText)
                     .font(.subheadline.weight(.semibold))
                 Text(model.peerSession.connectedPeerNames.isEmpty
-                     ? "Todo queda guardado hasta encontrar otro dispositivo."
-                     : "Sincronizando directamente, sin internet.")
+                     ? t("Todo queda guardado hasta encontrar otro dispositivo.", "Saved until another phone shows up.")
+                     : t("Sincronizando directamente, sin internet.", "Syncing directly, no internet."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

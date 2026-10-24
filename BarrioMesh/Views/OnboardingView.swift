@@ -46,7 +46,12 @@ struct OnboardingView: View {
         switch step {
         case .welcome:
             VStack(alignment: .leading, spacing: 20) {
-                Spacer(minLength: 60)
+                HStack {
+                    Spacer()
+                    LanguagePicker()
+                        .frame(width: 120)
+                }
+                Spacer(minLength: 30)
                 FaroMark(size: 88)
                 Text("Faro")
                     .font(.system(size: 52, weight: .heavy, design: .rounded))
@@ -55,39 +60,39 @@ struct OnboardingView: View {
                 Text("Hoy te conoce. Si mañana tiembla y se cae la señal, avisa a tu familia, pide lo que tu hogar necesita y coordina con tus vecinos por Bluetooth, sin internet.")
                     .foregroundStyle(.white.opacity(0.8))
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("Funciona 100% en tu teléfono", systemImage: "iphone")
-                    Label("Sin cuentas, sin servidores, sin SIM", systemImage: "antenna.radiowaves.left.and.right.slash")
-                    Label("Tú decides qué puede hacer solo", systemImage: "checkmark.shield")
+                    Label(t("Funciona 100% en tu teléfono", "Runs 100% on your phone"), systemImage: "iphone")
+                    Label(t("Sin cuentas, sin servidores, sin SIM", "No accounts, servers or SIM"), systemImage: "antenna.radiowaves.left.and.right.slash")
+                    Label(t("Tú decides qué puede hacer solo", "You decide what it does alone"), systemImage: "checkmark.shield")
                 }
                 .font(.subheadline)
                 .foregroundStyle(FaroTheme.beam)
             }
         case .basics:
             VStack(alignment: .leading, spacing: 16) {
-                title("¿Cómo te llamas?", "Así te verán tus vecinos y tu familia.")
-                field("Tu nombre", text: $draft.name)
-                Picker("País", selection: $draft.country) {
+                title(t("¿Cómo te llamas?", "What's your name?"), t("Así te verán tus vecinos y tu familia.", "How neighbors and family will see you."))
+                field(t("Tu nombre", "Your name"), text: $draft.name)
+                Picker(t("País", "Country"), selection: $draft.country) {
                     ForEach(Country.allCases) { country in
                         Text("\(country.flag) \(country.displayName)").tag(country)
                     }
                 }
                 .pickerStyle(.menu)
                 .tint(FaroTheme.beam)
-                title("¿En qué zona vives?", "Solo el barrio, nunca tu dirección.")
-                field("Ej.: Chapinero, Chacao, El Poblado", text: $draft.homeArea)
-                title("Un punto de encuentro público", "Faro lo propone para las entregas con vecinos.")
-                field("Ej.: Parque de la 93, la iglesia, la panadería", text: $draft.meetingPoint)
+                title(t("¿En qué zona vives?", "Where do you live?"), t("Solo el barrio, nunca tu dirección.", "Just the neighborhood, never your address."))
+                field(t("Ej.: Chapinero, Chacao, El Poblado", "e.g. Miraflores, Chapinero, El Poblado"), text: $draft.homeArea)
+                title(t("Un punto de encuentro público", "A public meeting point"), t("Faro lo propone para las entregas con vecinos.", "Faro suggests it for handoffs."))
+                field(t("Ej.: Parque de la 93, la iglesia, la panadería", "e.g. Parque Kennedy, the church, the bakery"), text: $draft.meetingPoint)
             }
         case .household:
             VStack(alignment: .leading, spacing: 16) {
-                title("Cuéntame de tu hogar", "Con quién vives, qué tienes guardado, qué necesitarían. Lo uso para actuar por ti en una emergencia.")
+                title(t("Cuéntame de tu hogar", "Tell me about your home"), t("Con quién vives, qué tienes guardado, qué necesitarían. Lo uso para actuar por ti en una emergencia.", "Who you live with, what you have, what you'd need."))
                 TextEditor(text: $householdText)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 130)
                     .padding(10)
                     .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
-                Button("Usar un ejemplo") {
-                    householdText = "Vivo con mi mamá que usa insulina. Tengo 12 botellas de agua, una batería externa y carro. Soy enfermera."
+                Button(t("Usar un ejemplo", "Use an example")) {
+                    householdText = t("Vivo con mi mamá que usa insulina. Tengo 12 botellas de agua, una batería externa y carro. Soy enfermera.", "I live with my mom who uses insulin. I have 12 bottles of water, a power bank and a car. I am a nurse.")
                 }
                 .font(.caption)
                 .tint(FaroTheme.beam)
@@ -98,7 +103,7 @@ struct OnboardingView: View {
                     if isThinking {
                         ProgressView().frame(maxWidth: .infinity)
                     } else {
-                        Label("Entender mi hogar", systemImage: "sparkles").frame(maxWidth: .infinity)
+                        Label(t("Entender mi hogar", "Understand my home"), systemImage: "sparkles").frame(maxWidth: .infinity)
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -126,29 +131,29 @@ struct OnboardingView: View {
             }
         case .family:
             VStack(alignment: .leading, spacing: 16) {
-                title("Tu círculo familiar", "Escriban el mismo código en sus teléfonos. Sus “estoy bien” llegarán saltando entre teléfonos cercanos.")
-                field("Código de familia", text: $draft.familyCircleCode)
+                title(t("Tu círculo familiar", "Your family circle"), t("Escriban el mismo código en sus teléfonos. Sus “estoy bien” llegarán saltando entre teléfonos cercanos.", "Use the same code on each phone. Check-ins hop between nearby phones."))
+                field(t("Código de familia", "Family code"), text: $draft.familyCircleCode)
                     .textInputAutocapitalization(.never)
-                Button("Generar un código seguro") { draft.familyCircleCode = FamilyCircle.suggestCode() }
+                Button(t("Generar un código seguro", "Generate a secure code")) { draft.familyCircleCode = FamilyCircle.suggestCode() }
                     .font(.subheadline.weight(.semibold))
                     .tint(FaroTheme.beam)
-                title("Alguien a quien avisar", "Cuando vuelva la señal, te dejo el mensaje listo para enviar.")
-                field("Nombre", text: $contactName)
-                field("Teléfono con código de país", text: $contactPhone)
+                title(t("Alguien a quien avisar", "Someone to notify"), t("Cuando vuelva la señal, te dejo el mensaje listo para enviar.", "When signal returns, the message is ready to send."))
+                field(t("Nombre", "Name"), text: $contactName)
+                field(t("Teléfono con código de país", "Phone with country code"), text: $contactPhone)
                     .keyboardType(.phonePad)
             }
         case .permissions:
             VStack(alignment: .leading, spacing: 14) {
-                title("¿Qué puedo hacer solo?", "Si se cae internet, actúo dentro de estos límites y te pregunto por todo lo demás.")
-                toggle("Activar modo emergencia al perder internet", $policy.activateOnOutage)
-                toggle("Activar al sentir un sismo", $policy.activateOnShaking)
-                toggle("Activar con alertas oficiales de sismo o tsunami", $policy.activateOnOfficialAlert)
-                toggle("Avisar a mi familia que estoy bien", $policy.autoCheckIn)
-                toggle("Pedir lo que mi hogar necesita", $policy.autoPublishNeeds)
-                toggle("Ofrecer lo que nos sobra", $policy.autoPublishOffers)
-                toggle("Aceptar ayuda de vecinos", $policy.autoAcceptIncomingHelp)
-                Stepper("Comprometer hasta \(policy.autoGiveLimit) unidades por entrega", value: $policy.autoGiveLimit, in: 0...10)
-                Label("Medicinas y primeros auxilios siempre te los pregunto.", systemImage: "cross.case.fill")
+                title(t("¿Qué puedo hacer solo?", "What can I do on my own?"), t("Si se cae internet, actúo dentro de estos límites y te pregunto por todo lo demás.", "In an emergency I act within these limits and ask about everything else."))
+                toggle(t("Activar modo emergencia al perder internet", "Start emergency mode when offline"), $policy.activateOnOutage)
+                toggle(t("Activar al sentir un sismo", "Start when the phone feels a quake"), $policy.activateOnShaking)
+                toggle(t("Activar con alertas oficiales de sismo o tsunami", "Start on official quake or tsunami alerts"), $policy.activateOnOfficialAlert)
+                toggle(t("Avisar a mi familia que estoy bien", "Tell my family I'm OK"), $policy.autoCheckIn)
+                toggle(t("Pedir lo que mi hogar necesita", "Request what my household needs"), $policy.autoPublishNeeds)
+                toggle(t("Ofrecer lo que nos sobra", "Offer what we can spare"), $policy.autoPublishOffers)
+                toggle(t("Aceptar ayuda de vecinos", "Accept help from neighbors"), $policy.autoAcceptIncomingHelp)
+                Stepper(t("Comprometer hasta \(policy.autoGiveLimit) unidades por entrega", "Give up to \(policy.autoGiveLimit) per handoff without asking"), value: $policy.autoGiveLimit, in: 0...10)
+                Label(t("Medicinas y primeros auxilios siempre te los pregunto.", "I always ask about medicine and first aid."), systemImage: "cross.case.fill")
                     .font(.caption)
                     .foregroundStyle(FaroTheme.beam)
             }
@@ -158,14 +163,14 @@ struct OnboardingView: View {
     private var footer: some View {
         HStack {
             if step != .welcome {
-                Button("Atrás") { withAnimation { step = Step(rawValue: step.rawValue - 1) ?? .welcome } }
+                Button(t("Atrás", "Back")) { withAnimation { step = Step(rawValue: step.rawValue - 1) ?? .welcome } }
                     .tint(.white)
             }
             Spacer()
             Button {
                 advance()
             } label: {
-                Text(step == .permissions ? "Listo, cuídame" : "Continuar")
+                Text(step == .permissions ? t("Listo, cuídame", "Done, watch over me") : t("Continuar", "Continue"))
                     .font(.headline)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
@@ -214,7 +219,7 @@ struct OnboardingView: View {
         draft.household = result.profile.household
         draft.supplies = result.profile.supplies
         draft.standingNeeds = result.profile.standingNeeds
-        learned = result.learned.isEmpty ? ["No encontré detalles todavía. Puedes agregarlos en Perfil."] : result.learned
+        learned = result.learned.isEmpty ? [t("No encontré detalles todavía. Puedes agregarlos en Perfil.", "No details yet. Add them in Profile.")] : result.learned
         engine = usedEngine
     }
 
@@ -223,7 +228,7 @@ struct OnboardingView: View {
             draft.familyContacts.append(FamilyContact(name: contactName, phone: contactPhone))
         }
         if draft.meetingPoint.trimmingCharacters(in: .whitespaces).isEmpty {
-            draft.meetingPoint = "Parque principal de \(draft.homeArea)"
+            draft.meetingPoint = t("Parque principal de \(draft.homeArea)", "\(draft.homeArea) main park")
         }
         model.policy = policy
         model.profile = draft

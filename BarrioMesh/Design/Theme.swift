@@ -79,6 +79,18 @@ struct StatusChip: View {
     }
 }
 
+/// EN | ES switch; everything, including the agent's voice, follows it.
+struct LanguagePicker: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        Picker(t("Idioma", "Language"), selection: $model.language) {
+            ForEach(AppLanguage.allCases) { Text($0.shortName).tag($0) }
+        }
+        .pickerStyle(.segmented)
+    }
+}
+
 struct SectionHeader: View {
     let title: String
     var subtitle: String?
