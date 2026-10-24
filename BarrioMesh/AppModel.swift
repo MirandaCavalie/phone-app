@@ -35,6 +35,7 @@ final class AppModel: ObservableObject {
     let peerSession: PeerSession
     let connectivity = ConnectivityMonitor()
     let seismometer = Seismometer()
+    let hazardMonitor = HazardMonitor()
     let identity: AgentIdentity
     let narrator = Narrator()
     @Published var speaksUpdates: Bool = UserDefaults.standard.object(forKey: "faro.speaks") as? Bool ?? true {
@@ -106,6 +107,11 @@ final class AppModel: ObservableObject {
         seismometer.onShaking = { [weak self] event in self?.feltShaking(event) }
         seismometer.start()
 
+        hazardMonitor.isOnline = { [weak self] in self?.effectiveConnectivity == .online }
+        hazardMonitor.onAlerts = { [weak self] alerts in self?.receiveOfficial(alerts) }
+        hazardMonitor.start(relayedBy: deviceID)
+        if profile.isConfigured { HazardMonitor.requestNotificationPermission() }
+
         // Follow-ups are time-based, so the agent also wakes up on its own.
         heartbeat = Task { [weak self] in
             while !Task.isCancelled {
@@ -119,6 +125,10 @@ final class AppModel: ObservableObject {
         // Rehearsal shortcut: launch with `-faro-demo` to start the simulated neighbors.
         if ProcessInfo.processInfo.arguments.contains("-faro-demo"), profile.isConfigured {
             startSimulatedNeighbors()
+        }
+        // Rehearsal shortcut: `-faro-alert` plays an official USGS alert near home.
+        if ProcessInfo.processInfo.arguments.contains("-faro-alert"), profile.isConfigured {
+            simulateOfficialAlert()
         }
         // Rehearsal shortcut: `-faro-quake` plays the earthquake alert as if the phone felt shaking.
         if ProcessInfo.processInfo.arguments.contains("-faro-quake"), profile.isConfigured {
@@ -159,6 +169,51 @@ final class AppModel: ObservableObject {
             quakeCountdown?.cancel()
             quakeAlert = nil
         }
+    }
+
+    // MARK: - Official alerts
+
+    /// Relevant official alerts this phone knows about, newest first, with their assessment.
+    var officialAlerts: [(alert: HazardAlert, assessment: HazardAssessment)] {
+        let home = profile.approximateLocation.point
+        return meshState.hazardAlerts
+            .map { ($0, HazardAssessment.assess($0, home: home)) }
+            .filter { $0.1.level > .ignore && Date().timeIntervalSince($0.0.occurredAt) < 6 * 3_600 }
+            .sorted { $0.0.occurredAt > $1.0.occurredAt }
+    }
+
+    /// Keeps only alerts that matter around here, then relays them to phones without internet.
+    private func receiveOfficial(_ alerts: [HazardAlert]) {
+        let home = profile.approximateLocation.point
+        let relevant = alerts.filter { HazardAssessment.assess($0, home: home).level > .ignore }
+        guard !relevant.isEmpty, store.add(relevant) else { return }
+        for alert in relevant where !memory.seenHazards.contains(alert.eventID) {
+            let assessment = HazardAssessment.assess(alert, home: home)
+            if assessment.level >= .warning { HazardMonitor.notify(assessment, alert: alert) }
+        }
+        publishChange()
+        runAgent()
+    }
+
+    /// Rehearsal: a strong quake near home, exactly as if USGS had reported it.
+    func simulateOfficialAlert() {
+        let home = profile.approximateLocation.point
+        let alert = HazardAlert(
+            eventID: "sim-\(UUID().uuidString.prefix(8))",
+            source: "USGS",
+            kind: .earthquake,
+            magnitude: 7.2,
+            place: "35 km al sureste de \(profile.approximateLocation.label) (simulado)",
+            epicenter: GeoPoint(latitude: home.latitude - 0.22, longitude: home.longitude + 0.22),
+            depthKm: 15,
+            occurredAt: Date(),
+            pagerLevel: "orange",
+            tsunamiFlag: false,
+            url: "https://earthquake.usgs.gov/earthquakes/map/",
+            relayedBy: deviceID,
+            isSimulated: true
+        )
+        receiveOfficial([alert])
     }
 
     // MARK: - Earthquakes

@@ -107,6 +107,7 @@ extension ActivityEntry.Kind {
         case .followUp: "clock.badge.checkmark.fill"
         case .approval: "checkmark.shield.fill"
         case .outbox: "envelope.fill"
+        case .alert: "exclamationmark.triangle.fill"
         }
     }
 
@@ -119,6 +120,7 @@ extension ActivityEntry.Kind {
         case .followUp: .orange
         case .approval: .teal
         case .outbox: .indigo
+        case .alert: FaroTheme.ember
         }
     }
 }

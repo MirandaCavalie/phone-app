@@ -142,6 +142,7 @@ struct OnboardingView: View {
                 title("¿Qué puedo hacer solo?", "Si se cae internet, actúo dentro de estos límites y te pregunto por todo lo demás.")
                 toggle("Activar modo emergencia al perder internet", $policy.activateOnOutage)
                 toggle("Activar al sentir un sismo", $policy.activateOnShaking)
+                toggle("Activar con alertas oficiales de sismo o tsunami", $policy.activateOnOfficialAlert)
                 toggle("Avisar a mi familia que estoy bien", $policy.autoCheckIn)
                 toggle("Pedir lo que mi hogar necesita", $policy.autoPublishNeeds)
                 toggle("Ofrecer lo que nos sobra", $policy.autoPublishOffers)
@@ -226,6 +227,7 @@ struct OnboardingView: View {
         }
         model.policy = policy
         model.profile = draft
+        HazardMonitor.requestNotificationPermission()
     }
 
     private func title(_ text: String, _ subtitle: String) -> some View {

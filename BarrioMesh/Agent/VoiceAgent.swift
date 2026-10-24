@@ -125,7 +125,7 @@ final class Narrator {
             primed = true
             return
         }
-        let important: Set<ActivityEntry.Kind> = [.mode, .agreement, .family, .followUp]
+        let important: Set<ActivityEntry.Kind> = [.alert, .mode, .agreement, .family, .followUp]
         for entry in log.prefix(8).reversed() where !spoken.contains(entry.id) {
             spoken.insert(entry.id)
             if isEnabled, important.contains(entry.kind) {

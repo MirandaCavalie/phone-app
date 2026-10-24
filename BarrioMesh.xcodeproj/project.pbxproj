@@ -43,6 +43,9 @@
 		100000000000000000000027 /* VoiceAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000027 /* VoiceAgent.swift */; };
 		100000000000000000000028 /* Paperwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* Paperwork.swift */; };
 		100000000000000000000029 /* PaperworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* PaperworkView.swift */; };
+		10000000000000000000002A /* MeshRadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* MeshRadarView.swift */; };
+		10000000000000000000002B /* HazardAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* HazardAlerts.swift */; };
+		10000000000000000000002C /* HazardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002C /* HazardMonitor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -87,6 +90,9 @@
 		200000000000000000000027 /* VoiceAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAgent.swift; sourceTree = "<group>"; };
 		200000000000000000000028 /* Paperwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paperwork.swift; sourceTree = "<group>"; };
 		200000000000000000000029 /* PaperworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperworkView.swift; sourceTree = "<group>"; };
+		20000000000000000000002A /* MeshRadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshRadarView.swift; sourceTree = "<group>"; };
+		20000000000000000000002B /* HazardAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardAlerts.swift; sourceTree = "<group>"; };
+		20000000000000000000002C /* HazardMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HazardMonitor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +143,7 @@
 		400000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002A /* MeshRadarView.swift */,
 				200000000000000000000029 /* PaperworkView.swift */,
 				200000000000000000000024 /* QuakeAlertView.swift */,
 				200000000000000000000021 /* NeighborsView.swift */,
@@ -166,6 +173,7 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002B /* HazardAlerts.swift */,
 				200000000000000000000028 /* Paperwork.swift */,
 				200000000000000000000025 /* MeshSecurity.swift */,
 				200000000000000000000022 /* SeismicDetector.swift */,
@@ -193,6 +201,7 @@
 		400000000000000000000008 /* Agent */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002C /* HazardMonitor.swift */,
 				200000000000000000000027 /* VoiceAgent.swift */,
 				200000000000000000000026 /* IdentityStore.swift */,
 				200000000000000000000023 /* Seismometer.swift */,
@@ -280,6 +289,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10000000000000000000002C /* HazardMonitor.swift in Sources */,
+				10000000000000000000002B /* HazardAlerts.swift in Sources */,
+				10000000000000000000002A /* MeshRadarView.swift in Sources */,
 				100000000000000000000001 /* BarrioMeshApp.swift in Sources */,
 				100000000000000000000002 /* AppModel.swift in Sources */,
 				100000000000000000000003 /* PeerSession.swift in Sources */,

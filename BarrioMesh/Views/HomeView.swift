@@ -11,6 +11,10 @@ struct HomeView: View {
                 VStack(spacing: 18) {
                     hero
 
+                    if let latest = model.officialAlerts.first {
+                        OfficialAlertCard(alert: latest.alert, assessment: latest.assessment, more: model.officialAlerts.count - 1)
+                    }
+
                     if !agreements.isEmpty {
                         SectionHeader(title: "Encuentros acordados")
                         ForEach(agreements) { summary in
@@ -327,5 +331,56 @@ private struct ActivityRow: View {
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct OfficialAlertCard: View {
+    let alert: HazardAlert
+    let assessment: HazardAssessment
+    let more: Int
+
+    private var color: Color {
+        switch assessment.level {
+        case .danger: FaroTheme.ember
+        case .warning: .orange
+        default: .yellow
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(alert.kind == .tsunami ? "Alerta de tsunami" : "Alerta sísmica oficial",
+                      systemImage: alert.kind == .tsunami ? "water.waves" : "waveform.path.ecg")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(color)
+                Spacer()
+                Text(alert.isSimulated ? "\(alert.source) · simulada" : alert.source)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            Text(assessment.headline)
+                .font(.title3.weight(.bold))
+            Text(alert.place)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(assessment.advice)
+                .font(.subheadline)
+            HStack {
+                Text(alert.occurredAt, style: .relative) + Text(" · profundidad \(Int(alert.depthKm)) km")
+                Spacer()
+                if let url = URL(string: alert.url), !alert.isSimulated {
+                    Link("Ver en \(alert.source)", destination: url)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            if more > 0 {
+                Text("+\(more) alertas más en las últimas horas")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .faroCard(tint: color)
     }
 }
