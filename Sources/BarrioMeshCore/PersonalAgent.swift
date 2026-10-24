@@ -357,7 +357,7 @@ public struct PersonalAgent: Sendable {
         result.memory.record(ActivityEntry(
             date: now,
             kind: .checkIn,
-            title: t("Avisé a tu familia: \(status.displayName.lowercased())", "Told your family: \(status.displayName)"),
+            title: t("Avisé a tu familia: \(status.inlineName)", "Told your family: \(status.displayName)"),
             detail: t("Viaja de teléfono en teléfono, cifrado.", "Hops phone to phone, encrypted.")
         ))
         prepareFamilyMessages(result: &result, now: now)
@@ -577,7 +577,7 @@ public struct PersonalAgent: Sendable {
                 if !update.needs.isEmpty { detail += t(" · necesita ", " · needs ") + update.needs.joined(separator: ", ") }
                 result.memory.record(ActivityEntry(
                     date: now, kind: .family,
-                    title: "\(update.fromName): \(update.status?.displayName.lowercased() ?? t("sin estado", "no status"))",
+                    title: "\(update.fromName): \(update.status?.inlineName ?? t("sin estado", "no status"))",
                     detail: detail
                 ))
             }
@@ -1202,7 +1202,7 @@ public struct PersonalAgent: Sendable {
             result.memory.record(ActivityEntry(
                 date: now,
                 kind: .family,
-                title: "\(checkIn.authorName): \(checkIn.status.displayName.lowercased())",
+                title: "\(checkIn.authorName): \(checkIn.status.inlineName)",
                 detail: "\(checkIn.area) · \(Self.timeFormatter.string(from: checkIn.createdAt)) · \(t("por la red de vecinos", "via nearby phones"))"
             ))
         }

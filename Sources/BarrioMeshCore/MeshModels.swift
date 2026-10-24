@@ -288,6 +288,11 @@ public enum SafetyStatus: String, Codable, CaseIterable, Sendable {
         case .needsHelp: t("Necesito ayuda", "I need help")
         }
     }
+
+    /// For use mid-sentence ("Rosa: estoy bien" / "Rosa: I'm OK").
+    public var inlineName: String {
+        Lang.isSpanish ? displayName.lowercased() : displayName
+    }
 }
 
 /// A tiny "I'm OK" beacon that hops phone to phone until it reaches the family circle.

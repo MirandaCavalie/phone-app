@@ -17,7 +17,7 @@ struct AgentSnapshot: Sendable {
     var familyLines: [String] {
         state.latestCheckIns(circleCode: profile.familyCircleCode)
             .filter { $0.authorID != selfID }
-            .map { "\($0.authorName): \($0.status.displayName.lowercased()) · \($0.area) · \(Self.time($0.createdAt))" }
+            .map { "\($0.authorName): \($0.status.inlineName) · \($0.area) · \(Self.time($0.createdAt))" }
     }
 
     var agreementLines: [String] {

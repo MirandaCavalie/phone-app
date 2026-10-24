@@ -13,7 +13,7 @@ struct FamilyView: View {
                     statusButtons
                 } footer: {
                     if let latest = model.myLatestCheckIn {
-                        Text(t("Último aviso: \(latest.status.displayName.lowercased()), \(latest.createdAt.formatted(date: .omitted, time: .shortened))",
+                        Text(t("Último aviso: \(latest.status.inlineName), \(latest.createdAt.formatted(date: .omitted, time: .shortened))",
                                "Last update: \(latest.status.displayName), \(latest.createdAt.formatted(date: .omitted, time: .shortened))"))
                     } else if model.profile.familyCircleID == nil {
                         Text(t("Primero crea el código de familia.", "Create a family code first."))
@@ -37,6 +37,8 @@ struct FamilyView: View {
                     Text(t("Personas", "People"))
                 }
 
+                TrustedPeopleSection()
+
                 if model.profile.familyCircleID != nil {
                     Section(t("Avisos recibidos", "Check-ins received")) {
                         if model.familyCheckIns.isEmpty {
@@ -49,7 +51,7 @@ struct FamilyView: View {
                                     .font(.title3)
                                     .foregroundStyle(checkIn.status == .safe ? FaroTheme.safe : FaroTheme.ember)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text("\(checkIn.authorName): \(checkIn.status.displayName.lowercased())")
+                                    Text("\(checkIn.authorName): \(checkIn.status.inlineName)")
                                         .font(.subheadline.weight(.semibold))
                                     Text("\(checkIn.area) · \(checkIn.createdAt.formatted(date: .omitted, time: .shortened))")
                                         .font(.caption)
