@@ -67,7 +67,15 @@ do {
     try require(persistent.add(need), "post should be persisted")
     try require(MeshStore(fileURL: file).state.posts == [need], "state should reload from disk")
 
-    print("Core checks passed: matching, convergence, and persistence")
+    let interpreted = OfflineAgent.interpret("Necesito 2 botellas de agua en Mission, es urgente")
+    try require(interpreted.kind == .need, "agent should classify a need")
+    try require(interpreted.resource == .water, "agent should extract the resource")
+    try require(interpreted.quantity == 2, "agent should extract the quantity")
+    try require(interpreted.urgency == .urgent, "agent should extract urgency")
+    try require(interpreted.area == "Mission", "agent should extract an approximate area")
+    try require(interpreted.isReady, "complete requests should become reviewable drafts")
+
+    print("Core checks passed: agent parsing, matching, convergence, and persistence")
 } catch {
     fputs("\(error)\n", stderr)
     exit(1)

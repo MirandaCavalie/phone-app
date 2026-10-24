@@ -13,6 +13,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "BarrioMeshCore"),
-        .executableTarget(name: "CoreChecks", dependencies: ["BarrioMeshCore"])
+        .executableTarget(name: "CoreChecks", dependencies: ["BarrioMeshCore"]),
+        .testTarget(name: "BarrioMeshCoreTests", dependencies: ["BarrioMeshCore"])
     ]
 )

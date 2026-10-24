@@ -5,6 +5,7 @@ public enum ResourceKind: String, Codable, CaseIterable, Identifiable, Sendable 
     case power
     case transport
     case translation
+    case medicine
     case firstAid
 
     public var id: String { rawValue }
@@ -15,6 +16,7 @@ public enum ResourceKind: String, Codable, CaseIterable, Identifiable, Sendable 
         case .power: "Energía"
         case .transport: "Transporte"
         case .translation: "Traducción"
+        case .medicine: "Medicamentos"
         case .firstAid: "Primeros auxilios"
         }
     }
@@ -25,6 +27,7 @@ public enum ResourceKind: String, Codable, CaseIterable, Identifiable, Sendable 
         case .power: "bolt.fill"
         case .transport: "car.fill"
         case .translation: "character.bubble.fill"
+        case .medicine: "pills.fill"
         case .firstAid: "cross.case.fill"
         }
     }
@@ -35,6 +38,7 @@ public enum ResourceKind: String, Codable, CaseIterable, Identifiable, Sendable 
         case .power: "cargas"
         case .transport: "lugares"
         case .translation: "persona"
+        case .medicine: "unidad"
         case .firstAid: "kit"
         }
     }
