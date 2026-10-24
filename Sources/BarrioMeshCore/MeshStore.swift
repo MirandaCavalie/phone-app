@@ -90,6 +90,55 @@ public final class MeshStore: @unchecked Sendable {
                 }
             }
 
+            changed = Self.union(&storedState.messages, with: incoming.messages) || changed
+            changed = Self.union(&storedState.checkIns, with: incoming.checkIns) || changed
+
+            if changed { persistLocked() }
+            return changed
+        }
+    }
+
+    @discardableResult
+    public func add(_ message: AgentMessage) -> Bool {
+        lock.withLock {
+            guard Self.union(&storedState.messages, with: [message]) else { return false }
+            persistLocked()
+            return true
+        }
+    }
+
+    @discardableResult
+    public func add(_ checkIn: SafetyCheckIn) -> Bool {
+        lock.withLock {
+            guard Self.union(&storedState.checkIns, with: [checkIn]) else { return false }
+            persistLocked()
+            return true
+        }
+    }
+
+    /// Applies everything an agent step decided, persisting once.
+    @discardableResult
+    public func apply(posts: [MeshPost], proposals: [MatchProposal], messages: [AgentMessage], checkIns: [SafetyCheckIn]) -> Bool {
+        lock.withLock {
+            var changed = false
+            for post in posts where !storedState.posts.contains(where: { $0.id == post.id }) {
+                storedState.posts.append(post)
+                changed = true
+            }
+            for proposal in proposals {
+                if let index = storedState.proposals.firstIndex(where: { $0.id == proposal.id }) {
+                    let merged = storedState.proposals[index].merged(with: proposal)
+                    if merged != storedState.proposals[index] {
+                        storedState.proposals[index] = merged
+                        changed = true
+                    }
+                } else {
+                    storedState.proposals.append(proposal)
+                    changed = true
+                }
+            }
+            changed = Self.union(&storedState.messages, with: messages) || changed
+            changed = Self.union(&storedState.checkIns, with: checkIns) || changed
             if changed { persistLocked() }
             return changed
         }
@@ -100,6 +149,16 @@ public final class MeshStore: @unchecked Sendable {
             storedState = MeshState()
             persistLocked()
         }
+    }
+
+    private static func union<Item: Identifiable>(_ items: inout [Item], with incoming: [Item]) -> Bool where Item.ID == UUID {
+        var known = Set(items.map(\.id))
+        var changed = false
+        for item in incoming where known.insert(item.id).inserted {
+            items.append(item)
+            changed = true
+        }
+        return changed
     }
 
     private func persistLocked() {

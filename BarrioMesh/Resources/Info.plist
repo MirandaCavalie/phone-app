@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Barrio Mesh</string>
+	<string>Faro</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -23,14 +23,14 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Barrio Mesh usa Bluetooth para encontrar teléfonos cercanos durante una emergencia.</string>
+	<string>Faro usa Bluetooth para que tu agente encuentre teléfonos cercanos cuando no hay internet.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_barrio-mesh._tcp</string>
 		<string>_barrio-mesh._udp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Barrio Mesh conecta este iPhone directamente con otros teléfonos cercanos, sin internet.</string>
+	<string>Faro conecta este iPhone directamente con teléfonos cercanos para avisar a tu familia y coordinar ayuda sin internet.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

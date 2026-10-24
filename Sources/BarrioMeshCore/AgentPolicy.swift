@@ -1,0 +1,50 @@
+import Foundation
+
+/// The permissions the person grants their agent ahead of time, while calm.
+/// During an outage the agent acts alone inside these limits and asks for everything else.
+public struct AgentPolicy: Codable, Equatable, Sendable {
+    /// Turn on emergency mode automatically when the phone loses internet.
+    public var activateOnOutage: Bool
+    /// Broadcast "estoy bien" to the family circle as soon as emergency mode starts.
+    public var autoCheckIn: Bool
+    /// Publish the household's standing needs without asking.
+    public var autoPublishNeeds: Bool
+    /// Publish shareable supplies (above the reserve) without asking.
+    public var autoPublishOffers: Bool
+    /// Accept a match where this household receives help.
+    public var autoAcceptIncomingHelp: Bool
+    /// Commit to give up to this many units per match without asking. 0 means always ask.
+    public var autoGiveLimit: Int
+
+    public init(
+        activateOnOutage: Bool = true,
+        autoCheckIn: Bool = true,
+        autoPublishNeeds: Bool = true,
+        autoPublishOffers: Bool = true,
+        autoAcceptIncomingHelp: Bool = true,
+        autoGiveLimit: Int = 3
+    ) {
+        self.activateOnOutage = activateOnOutage
+        self.autoCheckIn = autoCheckIn
+        self.autoPublishNeeds = autoPublishNeeds
+        self.autoPublishOffers = autoPublishOffers
+        self.autoAcceptIncomingHelp = autoAcceptIncomingHelp
+        self.autoGiveLimit = max(0, autoGiveLimit)
+    }
+
+    /// Resources that always need a human, whatever the policy says.
+    public static let alwaysAskResources: Set<ResourceKind> = [.medicine, .firstAid]
+
+    public func allowsPublishing(_ kind: PostKind, resource: ResourceKind) -> Bool {
+        guard !Self.alwaysAskResources.contains(resource) else { return false }
+        return kind == .need ? autoPublishNeeds : autoPublishOffers
+    }
+
+    public func allowsAccepting(role: PostKind, resource: ResourceKind, quantity: Int) -> Bool {
+        guard !Self.alwaysAskResources.contains(resource) else { return false }
+        switch role {
+        case .need: return autoAcceptIncomingHelp
+        case .offer: return autoGiveLimit > 0 && quantity <= autoGiveLimit
+        }
+    }
+}

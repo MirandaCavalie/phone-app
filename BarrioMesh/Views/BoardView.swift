@@ -5,8 +5,7 @@ struct BoardView: View {
     @State private var composerKind: PostKind?
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(spacing: 16) {
                     ConnectionBanner()
 
@@ -21,12 +20,9 @@ struct BoardView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Barrio Mesh")
             .sheet(item: $composerKind) { kind in
                 PostComposerView(kind: kind)
             }
-        }
     }
 
     private var actionButtons: some View {
@@ -54,7 +50,7 @@ struct BoardView: View {
         ContentUnavailableView {
             Label("La red está lista", systemImage: "dot.radiowaves.left.and.right")
         } description: {
-            Text("Publicá una necesidad u oferta. Quedará guardada y se compartirá cuando aparezca otro teléfono.")
+            Text("Publica una necesidad u oferta, o deja que Faro lo haga desde tu perfil. Se comparte cuando aparece otro teléfono.")
         }
         .frame(minHeight: 280)
     }
@@ -153,6 +149,6 @@ struct ConnectionBanner: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color.indigo.opacity(0.09), in: RoundedRectangle(cornerRadius: 14))
+        .background(FaroTheme.beam.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
     }
 }

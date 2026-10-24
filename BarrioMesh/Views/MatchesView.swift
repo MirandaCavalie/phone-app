@@ -4,14 +4,13 @@ struct MatchesView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(spacing: 14) {
                     if model.matchSummaries.isEmpty {
                         ContentUnavailableView {
                             Label("Todavía no hay matches", systemImage: "arrow.left.arrow.right")
                         } description: {
-                            Text("Cuando una necesidad y una oferta sean compatibles aparecerán acá.")
+                            Text("Cuando una necesidad y una oferta sean compatibles, los agentes negocian y aparecen aquí.")
                         }
                         .frame(minHeight: 420)
                     } else {
@@ -22,9 +21,6 @@ struct MatchesView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Coordinación")
-        }
     }
 }
 
@@ -60,6 +56,8 @@ private struct MatchCard: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            negotiationTrail
+
             actionArea
 
             if let whatsAppURL {
@@ -69,7 +67,7 @@ private struct MatchCard: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(.green)
-                .accessibilityHint("Prepara el mensaje; vos elegís el contacto y confirmás el envío.")
+                .accessibilityHint("Prepara el mensaje; tú eliges el contacto y confirmas el envío.")
 
                 Text("Nada se envía automáticamente. WhatsApp necesita conexión a internet.")
                     .font(.caption2)
@@ -80,6 +78,50 @@ private struct MatchCard: View {
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
     }
 
+    @ViewBuilder
+    private var negotiationTrail: some View {
+        if summary.isAgentNegotiated {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(summary.negotiation.messages) { message in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: icon(for: message.kind))
+                            .foregroundStyle(.purple)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Agente de \(message.senderName): \(verb(for: message.kind))")
+                                .font(.caption.weight(.semibold))
+                            if let terms = message.terms, message.kind != .accept {
+                                Text("\(terms.quantity) en \(terms.meetingPoint), \(terms.meetAt.formatted(date: .omitted, time: .shortened))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.purple.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func icon(for kind: AgentMessage.Kind) -> String {
+        switch kind {
+        case .propose: "arrow.up.right.circle.fill"
+        case .counter: "arrow.triangle.2.circlepath.circle.fill"
+        case .accept: "checkmark.circle.fill"
+        case .decline: "xmark.circle.fill"
+        }
+    }
+
+    private func verb(for kind: AgentMessage.Kind) -> String {
+        switch kind {
+        case .propose: "propone"
+        case .counter: "contraoferta"
+        case .accept: "acepta"
+        case .decline: "rechaza"
+        }
+    }
+
     private var statusLabel: some View {
         Text(summary.status.displayName)
             .font(.caption.weight(.semibold))
@@ -88,7 +130,7 @@ private struct MatchCard: View {
 
     private var statusColor: Color {
         switch summary.status {
-        case .suggested: .indigo
+        case .suggested: .accentColor
         case .waiting: .orange
         case .accepted: .green
         case .declined: .red
@@ -110,7 +152,7 @@ private struct MatchCard: View {
         let offer = summary.candidate.offer
 
         return """
-        🤝 Barrio Mesh encontró una coincidencia
+        🤝 Faro encontró una coincidencia
 
         \(need.resource.displayName)
         • \(need.authorName) necesita \(need.quantity) \(need.unit)
@@ -118,7 +160,7 @@ private struct MatchCard: View {
         • Zona aproximada: \(need.area)
         • Estado: \(summary.status.displayName)
 
-        Coordiná un punto público y no compartas direcciones exactas hasta confirmar el encuentro.
+        Coordina un punto público y no compartas direcciones exactas hasta confirmar el encuentro.
         """
     }
 
@@ -133,8 +175,12 @@ private struct MatchCard: View {
         } else {
             switch summary.status {
             case .suggested, .waiting:
-                if model.hasApproved(summary) {
-                    Label("Confirmado por vos; falta la otra persona.", systemImage: "clock")
+                if summary.isAgentNegotiated {
+                    Label("Los agentes están negociando. Si necesitan tu OK, aparece en Inicio.", systemImage: "sparkles")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else if model.hasApproved(summary) {
+                    Label("Confirmado por ti; falta la otra persona.", systemImage: "clock")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {

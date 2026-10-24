@@ -18,6 +18,7 @@ final class PeerSession: NSObject, ObservableObject, @unchecked Sendable {
     var onPeerConnected: (() -> Void)?
 
     private static let serviceType = "barrio-mesh"
+    private static let protocolTag = String(MeshWireMessage.currentProtocolVersion)
 
     private let localPeerID: MCPeerID
     private lazy var session: MCSession = {
@@ -32,7 +33,7 @@ final class PeerSession: NSObject, ObservableObject, @unchecked Sendable {
     private lazy var advertiser: MCNearbyServiceAdvertiser = {
         let advertiser = MCNearbyServiceAdvertiser(
             peer: localPeerID,
-            discoveryInfo: ["protocol": "1"],
+            discoveryInfo: ["protocol": Self.protocolTag],
             serviceType: Self.serviceType
         )
         advertiser.delegate = self
@@ -106,7 +107,7 @@ extension PeerSession: MCNearbyServiceAdvertiserDelegate {
 
 extension PeerSession: MCNearbyServiceBrowserDelegate {
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String: String]?) {
-        guard info?["protocol"] == "1" else { return }
+        guard info?["protocol"] == Self.protocolTag else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self,
                   self.localPeerID.displayName < peerID.displayName,

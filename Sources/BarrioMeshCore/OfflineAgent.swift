@@ -55,7 +55,7 @@ public struct AgentDraft: Equatable, Sendable {
     public var isReady: Bool { missingFields.isEmpty }
 
     public var summary: String {
-        let action = kind == .need ? "necesitás" : "podés ofrecer"
+        let action = kind == .need ? "necesitas" : "puedes ofrecer"
         let resourceName = resource?.displayName.lowercased() ?? "un recurso por elegir"
         let location = area.isEmpty ? "una zona por completar" : area
         return "Entendí que \(action) \(quantity) \(unit) de \(resourceName) en \(location), con prioridad \(urgency.displayName.lowercased())."
@@ -63,7 +63,7 @@ public struct AgentDraft: Equatable, Sendable {
 }
 
 public enum OfflineAgent {
-    public static func interpret(_ text: String) -> AgentDraft {
+    public static func interpret(_ text: String, emergencyNumber: String = "911") -> AgentDraft {
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalized = normalize(cleaned)
         let kind = detectKind(in: normalized)
@@ -75,10 +75,10 @@ public enum OfflineAgent {
 
         var notices: [String] = []
         if containsPossibleExactAddress(normalized) {
-            notices.append("No guardé la dirección exacta. Completá solo una zona aproximada.")
+            notices.append("No guardé la dirección exacta. Escribe solo una zona aproximada.")
         }
         if containsMedicalEmergency(normalized) {
-            notices.append("Esto puede ser una emergencia médica. Si podés, llamá al 911; Barrio Mesh no reemplaza a los servicios de emergencia.")
+            notices.append("Esto puede ser una emergencia médica. Si puedes, llama al \(emergencyNumber); Faro no reemplaza a los servicios de emergencia.")
         }
 
         return AgentDraft(
@@ -147,7 +147,7 @@ public enum OfflineAgent {
         }
     }
 
-    private static func detectResource(in text: String) -> ResourceKind? {
+    static func detectResource(in text: String) -> ResourceKind? {
         let terms: [(ResourceKind, [String])] = [
             (.water, ["agua", "botella", "water"]),
             (.power, ["bateria", "cargador", "cargar", "carga", "energia", "electricidad", "power bank", "charger"]),
@@ -165,7 +165,7 @@ public enum OfflineAgent {
             .0
     }
 
-    private static func detectQuantity(in text: String) -> Int {
+    static func detectQuantity(in text: String) -> Int {
         if let regex = try? NSRegularExpression(pattern: #"(?<![\p{L}\p{N}])(\d{1,2})(?![\p{L}\p{N}])"#),
            let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
            let range = Range(match.range(at: 1), in: text),
@@ -184,7 +184,7 @@ public enum OfflineAgent {
         return 1
     }
 
-    private static func detectUrgency(in text: String) -> Urgency {
+    static func detectUrgency(in text: String) -> Urgency {
         if ["urgente", "emergencia", "inmediato", "ahora", "urgent", "emergency"].contains(where: text.contains) {
             return .urgent
         }
@@ -211,11 +211,20 @@ public enum OfflineAgent {
         terms.compactMap { text.range(of: $0)?.lowerBound }.min()
     }
 
-    private static func normalize(_ text: String) -> String {
+    static func normalize(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es"))
     }
 
-    private static let knownAreas = [
+    static let knownAreas = [
+        // Colombia
+        "Chapinero", "Usaquén", "Suba", "Kennedy", "Bosa", "Teusaquillo", "La Candelaria",
+        "El Poblado", "Laureles", "Belén", "Envigado", "Granada", "San Antonio",
+        // Venezuela
+        "Chacao", "Altamira", "Petare", "Catia", "El Hatillo", "Los Palos Grandes",
+        // México, Chile, Perú, Ecuador
+        "Roma Norte", "Condesa", "Coyoacán", "Iztapalapa", "Providencia", "Ñuñoa", "Miraflores",
+        "Barranco", "La Mariscal",
+        // San Francisco
         "Mission", "SOMA", "Tenderloin", "Chinatown", "Sunset", "Richmond", "Castro",
         "Marina", "Bernal Heights", "Excelsior", "Bayview", "Potrero Hill", "Noe Valley", "Downtown"
     ]

@@ -11,7 +11,7 @@ enum AgentEngine: Sendable {
     var displayName: String {
         switch self {
         case .appleIntelligence: "Apple Intelligence local"
-        case .localRules: "Intérprete local"
+        case .localRules: "Motor local"
         }
     }
 }
@@ -22,8 +22,8 @@ struct PersonalAgentResult: Sendable {
 }
 
 enum PersonalAgentInterpreter {
-    static func interpret(_ text: String) async -> PersonalAgentResult {
-        let fallback = OfflineAgent.interpret(text)
+    static func interpret(_ text: String, emergencyNumber: String = "911") async -> PersonalAgentResult {
+        let fallback = OfflineAgent.interpret(text, emergencyNumber: emergencyNumber)
 
         #if canImport(FoundationModels)
         if #available(iOS 26.0, *), SystemLanguageModel.default.isAvailable {

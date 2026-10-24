@@ -5,8 +5,7 @@ struct NetworkView: View {
     @State private var confirmReset = false
 
     var body: some View {
-        NavigationStack {
-            Form {
+        Form {
                 Section {
                     ConnectionBanner()
                         .listRowInsets(EdgeInsets())
@@ -14,7 +13,7 @@ struct NetworkView: View {
                 }
 
                 Section("Este teléfono") {
-                    TextField("Nombre visible", text: $model.displayName)
+                    LabeledContent("Nombre visible", value: model.profile.name)
                     LabeledContent("Identificador", value: String(model.deviceID.prefix(8)))
                         .font(.caption)
                     LabeledContent("Publicaciones conocidas", value: "\(model.meshState.posts.count)")
@@ -27,7 +26,7 @@ struct NetworkView: View {
 
                 Section("Teléfonos conectados") {
                     if model.peerSession.connectedPeerNames.isEmpty {
-                        Text("Abrí Barrio Mesh en el segundo iPhone y aceptá el permiso de red local.")
+                        Text("Abre Faro en el otro iPhone y acepta el permiso de red local.")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(model.peerSession.connectedPeerNames, id: \.self) { name in
@@ -39,14 +38,14 @@ struct NetworkView: View {
                 Section("Privacidad") {
                     Label("La sesión entre teléfonos está cifrada.", systemImage: "lock.fill")
                     Label("No se necesita cuenta, SIM ni servidor.", systemImage: "cloud.slash.fill")
-                    Label("Solo compartí zonas aproximadas.", systemImage: "location.slash.fill")
+                    Label("Solo se comparten zonas aproximadas.", systemImage: "location.slash.fill")
                 }
 
                 Section("Respaldo para la demo") {
-                    Button("Cargar un caso de prueba local") {
-                        model.loadDemoData()
+                    Button("Simular vecinos cercanos") {
+                        model.startSimulatedNeighbors()
                     }
-                    Text("Crea una necesidad y una oferta ficticias para mostrar la interfaz si un segundo teléfono falla.")
+                    Text("Crea agentes ficticios marcados “(simulado)” si un segundo teléfono falla. No finge una conexión real.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -69,6 +68,5 @@ struct NetworkView: View {
                 Button("Borrar datos", role: .destructive) { model.resetLocalData() }
                 Button("Cancelar", role: .cancel) {}
             }
-        }
     }
 }

@@ -22,7 +22,19 @@
 		10000000000000000000000D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* Assets.xcassets */; };
 		100000000000000000000013 /* OfflineAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* OfflineAgent.swift */; };
 		100000000000000000000014 /* AgentInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* AgentInterpreter.swift */; };
-		100000000000000000000015 /* AgentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* AgentView.swift */; };
+		100000000000000000000015 /* AskFaroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* AskFaroView.swift */; };
+		100000000000000000000016 /* AgentProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000016 /* AgentProfile.swift */; };
+		100000000000000000000017 /* AgentPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000017 /* AgentPolicy.swift */; };
+		100000000000000000000018 /* PersonalAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000018 /* PersonalAgent.swift */; };
+		100000000000000000000019 /* ProfileInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000019 /* ProfileInterpreter.swift */; };
+		10000000000000000000001A /* AgentBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001A /* AgentBrain.swift */; };
+		10000000000000000000001B /* ConnectivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001B /* ConnectivityMonitor.swift */; };
+		10000000000000000000001C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001C /* Theme.swift */; };
+		10000000000000000000001D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001D /* HomeView.swift */; };
+		10000000000000000000001E /* FamilyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001E /* FamilyView.swift */; };
+		10000000000000000000001F /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* OnboardingView.swift */; };
+		100000000000000000000020 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000020 /* ProfileView.swift */; };
+		100000000000000000000021 /* NeighborsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021 /* NeighborsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,7 +58,19 @@
 		200000000000000000000012 /* SOP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SOP.md; sourceTree = "<group>"; };
 		200000000000000000000013 /* OfflineAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineAgent.swift; sourceTree = "<group>"; };
 		200000000000000000000014 /* AgentInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentInterpreter.swift; sourceTree = "<group>"; };
-		200000000000000000000015 /* AgentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentView.swift; sourceTree = "<group>"; };
+		200000000000000000000015 /* AskFaroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskFaroView.swift; sourceTree = "<group>"; };
+		200000000000000000000016 /* AgentProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentProfile.swift; sourceTree = "<group>"; };
+		200000000000000000000017 /* AgentPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPolicy.swift; sourceTree = "<group>"; };
+		200000000000000000000018 /* PersonalAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalAgent.swift; sourceTree = "<group>"; };
+		200000000000000000000019 /* ProfileInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInterpreter.swift; sourceTree = "<group>"; };
+		20000000000000000000001A /* AgentBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentBrain.swift; sourceTree = "<group>"; };
+		20000000000000000000001B /* ConnectivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityMonitor.swift; sourceTree = "<group>"; };
+		20000000000000000000001C /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		20000000000000000000001D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		20000000000000000000001E /* FamilyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilyView.swift; sourceTree = "<group>"; };
+		20000000000000000000001F /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		200000000000000000000020 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		200000000000000000000021 /* NeighborsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,7 +101,8 @@
 			children = (
 				200000000000000000000001 /* BarrioMeshApp.swift */,
 				200000000000000000000002 /* AppModel.swift */,
-				200000000000000000000014 /* AgentInterpreter.swift */,
+				400000000000000000000008 /* Agent */,
+				400000000000000000000009 /* Design */,
 				400000000000000000000003 /* Networking */,
 				400000000000000000000004 /* Views */,
 				400000000000000000000005 /* Resources */,
@@ -96,12 +121,17 @@
 		400000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000021 /* NeighborsView.swift */,
+				200000000000000000000020 /* ProfileView.swift */,
+				20000000000000000000001F /* OnboardingView.swift */,
+				20000000000000000000001E /* FamilyView.swift */,
+				20000000000000000000001D /* HomeView.swift */,
 				200000000000000000000004 /* ContentView.swift */,
 				200000000000000000000005 /* BoardView.swift */,
 				200000000000000000000006 /* PostComposerView.swift */,
 				200000000000000000000007 /* MatchesView.swift */,
 				200000000000000000000008 /* NetworkView.swift */,
-				200000000000000000000015 /* AgentView.swift */,
+				200000000000000000000015 /* AskFaroView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -118,6 +148,10 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000019 /* ProfileInterpreter.swift */,
+				200000000000000000000018 /* PersonalAgent.swift */,
+				200000000000000000000017 /* AgentPolicy.swift */,
+				200000000000000000000016 /* AgentProfile.swift */,
 				200000000000000000000009 /* ResourceKind.swift */,
 				20000000000000000000000A /* MeshModels.swift */,
 				20000000000000000000000B /* MatchEngine.swift */,
@@ -133,6 +167,24 @@
 				20000000000000000000000F /* BarrioMesh.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		400000000000000000000008 /* Agent */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000014 /* AgentInterpreter.swift */,
+				20000000000000000000001A /* AgentBrain.swift */,
+				20000000000000000000001B /* ConnectivityMonitor.swift */,
+			);
+			path = Agent;
+			sourceTree = "<group>";
+		};
+		400000000000000000000009 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000001C /* Theme.swift */,
+			);
+			path = Design;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -218,7 +270,19 @@
 				10000000000000000000000C /* MeshStore.swift in Sources */,
 				100000000000000000000013 /* OfflineAgent.swift in Sources */,
 				100000000000000000000014 /* AgentInterpreter.swift in Sources */,
-				100000000000000000000015 /* AgentView.swift in Sources */,
+				100000000000000000000015 /* AskFaroView.swift in Sources */,
+				100000000000000000000016 /* AgentProfile.swift in Sources */,
+				100000000000000000000017 /* AgentPolicy.swift in Sources */,
+				100000000000000000000018 /* PersonalAgent.swift in Sources */,
+				100000000000000000000019 /* ProfileInterpreter.swift in Sources */,
+				10000000000000000000001A /* AgentBrain.swift in Sources */,
+				10000000000000000000001B /* ConnectivityMonitor.swift in Sources */,
+				10000000000000000000001C /* Theme.swift in Sources */,
+				10000000000000000000001D /* HomeView.swift in Sources */,
+				10000000000000000000001E /* FamilyView.swift in Sources */,
+				10000000000000000000001F /* OnboardingView.swift in Sources */,
+				100000000000000000000020 /* ProfileView.swift in Sources */,
+				100000000000000000000021 /* NeighborsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
