@@ -70,7 +70,7 @@ struct ProfileView: View {
                 Section {
                     Toggle(t("Activar modo emergencia al perder internet", "Start emergency mode when offline"), isOn: $model.policy.activateOnOutage)
                     Toggle(t("Activar al sentir un sismo", "Start when the phone feels a quake"), isOn: $model.policy.activateOnShaking)
-                    Toggle(t("Activar con alertas oficiales (USGS)", "Start on official alerts (USGS)"), isOn: $model.policy.activateOnOfficialAlert)
+                    Toggle(t("Activar con alertas oficiales (USGS, EMSC, GDACS, NOAA)", "Start on official alerts (USGS, EMSC, GDACS, NOAA)"), isOn: $model.policy.activateOnOfficialAlert)
                     Toggle(t("Avisar a mi familia que estoy bien", "Tell my family I'm OK"), isOn: $model.policy.autoCheckIn)
                     Toggle(t("Pedir lo que mi hogar necesita", "Request what my household needs"), isOn: $model.policy.autoPublishNeeds)
                     Toggle(t("Ofrecer lo que nos sobra", "Offer what we can spare"), isOn: $model.policy.autoPublishOffers)
