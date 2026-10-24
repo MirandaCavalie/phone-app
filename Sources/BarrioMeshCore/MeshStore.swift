@@ -94,6 +94,7 @@ public final class MeshStore: @unchecked Sendable {
 
             changed = Self.union(&storedState.messages, with: incoming.messages) || changed
             changed = Self.union(&storedState.checkIns, with: incoming.checkIns) || changed
+            changed = Self.union(&storedState.seismicReports, with: incoming.seismicReports) || changed
 
             if changed { persistLocked() }
             return changed
@@ -104,6 +105,15 @@ public final class MeshStore: @unchecked Sendable {
     public func add(_ message: AgentMessage) -> Bool {
         lock.withLock {
             guard Self.union(&storedState.messages, with: [message]) else { return false }
+            persistLocked()
+            return true
+        }
+    }
+
+    @discardableResult
+    public func add(_ report: SeismicReport) -> Bool {
+        lock.withLock {
+            guard Self.union(&storedState.seismicReports, with: [report]) else { return false }
             persistLocked()
             return true
         }
@@ -152,9 +162,9 @@ public final class MeshStore: @unchecked Sendable {
     @discardableResult
     public func compact(now: Date = Date(), retention: TimeInterval = MeshStore.defaultRetention) -> Bool {
         lock.withLock {
-            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count)
+            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count)
             storedState = Self.compacted(storedState, now: now, retention: retention)
-            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count)
+            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count)
             guard before != after else { return false }
             persistLocked()
             return true
@@ -179,8 +189,9 @@ public final class MeshStore: @unchecked Sendable {
             newest[key] = checkIn
         }
         let checkIns = state.checkIns.filter { newest["\($0.circleID)|\($0.authorID)"]?.id == $0.id }
+        let seismicReports = state.seismicReports.filter { $0.detectedAt >= cutoff }
 
-        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns)
+        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports)
     }
 
     static func isStale(_ post: MeshPost, cutoff: Date) -> Bool {

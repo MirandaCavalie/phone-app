@@ -87,6 +87,7 @@ struct ProfileView: View {
 
                 Section {
                     Toggle("Activar modo emergencia al perder internet", isOn: $model.policy.activateOnOutage)
+                    Toggle("Activar al sentir un sismo", isOn: $model.policy.activateOnShaking)
                     Toggle("Avisar a mi familia que estoy bien", isOn: $model.policy.autoCheckIn)
                     Toggle("Pedir lo que mi hogar necesita", isOn: $model.policy.autoPublishNeeds)
                     Toggle("Ofrecer lo que nos sobra", isOn: $model.policy.autoPublishOffers)
@@ -101,6 +102,7 @@ struct ProfileView: View {
                 Section("Red y demostración") {
                     NavigationLink("Red local") { NetworkView() }
                     Toggle("Simular corte de internet", isOn: $model.simulateOutage)
+                    Button("Simular sismo") { model.simulateQuake() }
                     Button("Simular vecinos cercanos") { model.startSimulatedNeighbors() }
                     Text("Crea agentes ficticios marcados “(simulado)” para mostrar la negociación con un solo teléfono.")
                         .font(.caption)

@@ -34,6 +34,15 @@ final class AppModel: ObservableObject {
     let deviceID: String
     let peerSession: PeerSession
     let connectivity = ConnectivityMonitor()
+    let seismometer = Seismometer()
+
+    /// A quake felt only by this phone, waiting out its cancel window.
+    struct QuakeAlert: Equatable {
+        let event: SeismicEvent
+        let deadline: Date
+    }
+    @Published private(set) var quakeAlert: QuakeAlert?
+    private var quakeCountdown: Task<Void, Never>?
 
     private let store: MeshStore
     private let encoder: JSONEncoder
@@ -86,6 +95,9 @@ final class AppModel: ObservableObject {
         }
         connectivity.start()
 
+        seismometer.onShaking = { [weak self] event in self?.feltShaking(event) }
+        seismometer.start()
+
         // Follow-ups are time-based, so the agent also wakes up on its own.
         heartbeat = Task { [weak self] in
             while !Task.isCancelled {
@@ -99,6 +111,10 @@ final class AppModel: ObservableObject {
         // Rehearsal shortcut: launch with `-faro-demo` to start the simulated neighbors.
         if ProcessInfo.processInfo.arguments.contains("-faro-demo"), profile.isConfigured {
             startSimulatedNeighbors()
+        }
+        // Rehearsal shortcut: `-faro-quake` plays the earthquake alert as if the phone felt shaking.
+        if ProcessInfo.processInfo.arguments.contains("-faro-quake"), profile.isConfigured {
+            simulateQuake()
         }
     }
 
@@ -130,6 +146,60 @@ final class AppModel: ObservableObject {
         let result = agent.step(state: store.state, memory: memory, connectivity: effectiveConnectivity, now: now)
         commit(result)
         stepDemoNeighbors(now: now)
+        if memory.emergencyActive, quakeAlert != nil {
+            // Nearby phones confirmed the quake while this one was still counting down.
+            quakeCountdown?.cancel()
+            quakeAlert = nil
+        }
+    }
+
+    // MARK: - Earthquakes
+
+    func feltShaking(_ event: SeismicEvent) {
+        guard profile.isConfigured else { return }
+        let now = Date()
+        let report = SeismicReport(deviceID: deviceID, area: profile.homeArea, peakAcceleration: event.peakAcceleration, detectedAt: now)
+        if store.add(report) { publishChange() }
+
+        switch agent.assessShaking(event, reports: store.state.seismicReports, memory: memory, now: now) {
+        case .ignore:
+            break
+        case let .activateNow(phones):
+            activateForQuake(event, phones: phones)
+        case let .countdown(seconds):
+            quakeAlert = QuakeAlert(event: event, deadline: now.addingTimeInterval(TimeInterval(seconds)))
+            quakeCountdown?.cancel()
+            quakeCountdown = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(seconds))
+                guard !Task.isCancelled, let self, let alert = self.quakeAlert else { return }
+                self.activateForQuake(alert.event, phones: 1)
+            }
+        }
+    }
+
+    func cancelQuakeAlert() {
+        quakeCountdown?.cancel()
+        quakeAlert = nil
+        memory.record(ActivityEntry(date: Date(), kind: .mode, title: "Cancelaste la alerta de sismo", detail: "No activé el modo emergencia."))
+        save(memory, to: Self.memoryURL)
+    }
+
+    func confirmQuakeNow() {
+        guard let alert = quakeAlert else { return }
+        activateForQuake(alert.event, phones: 1)
+    }
+
+    /// Rehearsal: the same path a real accelerometer event takes.
+    func simulateQuake() {
+        feltShaking(SeismicEvent(peakAcceleration: 0.21, duration: 3))
+    }
+
+    private func activateForQuake(_ event: SeismicEvent?, phones: Int) {
+        quakeCountdown?.cancel()
+        quakeAlert = nil
+        memory = agent.activateForEarthquake(event, phones: phones, memory: memory, now: Date())
+        save(memory, to: Self.memoryURL)
+        runAgent()
     }
 
     func setEmergency(_ active: Bool) {
