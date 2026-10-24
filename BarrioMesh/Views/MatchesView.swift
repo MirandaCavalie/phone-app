@@ -61,6 +61,20 @@ private struct MatchCard: View {
                 .foregroundStyle(.secondary)
 
             actionArea
+
+            if let whatsAppURL {
+                Link(destination: whatsAppURL) {
+                    Label("Abrir en WhatsApp", systemImage: "arrow.up.forward.app")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.green)
+                .accessibilityHint("Prepara el mensaje; vos elegís el contacto y confirmás el envío.")
+
+                Text("Nada se envía automáticamente. WhatsApp necesita conexión a internet.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
@@ -80,6 +94,32 @@ private struct MatchCard: View {
         case .declined: .red
         case .completed: .secondary
         }
+    }
+
+    private var whatsAppURL: URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "wa.me"
+        components.path = "/"
+        components.queryItems = [URLQueryItem(name: "text", value: shareMessage)]
+        return components.url
+    }
+
+    private var shareMessage: String {
+        let need = summary.candidate.need
+        let offer = summary.candidate.offer
+
+        return """
+        🤝 Barrio Mesh encontró una coincidencia
+
+        \(need.resource.displayName)
+        • \(need.authorName) necesita \(need.quantity) \(need.unit)
+        • \(offer.authorName) puede ofrecer \(offer.quantity) \(offer.unit)
+        • Zona aproximada: \(need.area)
+        • Estado: \(summary.status.displayName)
+
+        Coordiná un punto público y no compartas direcciones exactas hasta confirmar el encuentro.
+        """
     }
 
     @ViewBuilder

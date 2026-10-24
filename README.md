@@ -17,6 +17,7 @@ The product hypothesis is simple: during an outage, the useful network is the pe
 - Convergent merging of concurrent approvals
 - Gossip behavior: newly learned state is sent to every currently connected peer
 - Local demo data as a presentation fallback
+- Optional WhatsApp handoff with a pre-filled, privacy-conscious match summary
 - No account, SIM card, server, cloud model, or API key
 
 ## Architecture
@@ -46,7 +47,7 @@ The shared state is intentionally small. Every phone stores immutable posts plus
 - Bluetooth and Wi-Fi enabled on both phones
 - Developer Mode enabled on both phones
 
-The app does not require the phones to have SIM cards or internet access after installation.
+The mesh does not require the phones to have SIM cards or internet access after installation. Opening a prepared match in WhatsApp is optional and does require internet access.
 
 ## Install on two iPhones
 
@@ -72,7 +73,8 @@ A free Personal Team provisioning profile expires after seven days. Re-run the a
 7. Open **Matches** on both phones. The same match should appear.
 8. Confirm on phone A. Phone B should show that one person has confirmed.
 9. Confirm on phone B. Both should show **Encuentro confirmado**.
-10. Mark the help delivered on both phones to close the interaction.
+10. Optionally tap **Abrir en WhatsApp**, choose a contact, review the pre-filled summary, and send it. Nothing is sent automatically.
+11. Mark the help delivered on both phones to close the interaction.
 
 If connectivity fails during a presentation, open **Red → Cargar un caso de prueba local**. This is explicitly labeled as fallback demo data and does not pretend a peer is connected.
 
@@ -96,6 +98,7 @@ swift run CoreChecks
 - **No medical triage:** “first aid” means requesting or offering a kit or trained person. The app does not diagnose or prioritize medical conditions.
 - **Not an emergency service:** it complements, but never replaces, 911 or official alerts.
 - **No guaranteed delivery:** disconnected messages remain on the originating phone until another peer is encountered.
+- **WhatsApp is not part of the offline mesh:** the button uses WhatsApp's universal link to prepare a message. It needs internet and the user must choose a contact and confirm sending.
 
 ## Production path
 
