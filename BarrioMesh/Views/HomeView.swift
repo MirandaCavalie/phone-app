@@ -2,7 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var showingChat = false
+    @State private var showingChat = LaunchOptions.sheet == "chat"
+    @State private var showingPaperwork = LaunchOptions.sheet == "paperwork"
 
     var body: some View {
         NavigationStack {
@@ -24,7 +25,27 @@ struct HomeView: View {
                         }
                     }
 
-                    if !model.memory.emergencyActive {
+                    if model.memory.emergencyActive {
+                        Button {
+                            showingPaperwork = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                Image(systemName: "doc.badge.ellipsis")
+                                    .font(.title2)
+                                    .foregroundStyle(FaroTheme.beam)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Trámites listos").font(.headline)
+                                    Text("Guion para llamar al \(model.profile.country.emergencyNumber) y reporte de afectación prellenado.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                            }
+                            .faroCard()
+                        }
+                        .buttonStyle(.plain)
+                    } else {
                         PreparednessCard()
                     }
 
@@ -62,6 +83,9 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showingChat) {
                 AskFaroView()
+            }
+            .sheet(isPresented: $showingPaperwork) {
+                PaperworkView()
             }
         }
     }

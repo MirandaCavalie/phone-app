@@ -41,6 +41,8 @@
 		100000000000000000000025 /* MeshSecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* MeshSecurity.swift */; };
 		100000000000000000000026 /* IdentityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* IdentityStore.swift */; };
 		100000000000000000000027 /* VoiceAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000027 /* VoiceAgent.swift */; };
+		100000000000000000000028 /* Paperwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* Paperwork.swift */; };
+		100000000000000000000029 /* PaperworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* PaperworkView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -83,6 +85,8 @@
 		200000000000000000000025 /* MeshSecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshSecurity.swift; sourceTree = "<group>"; };
 		200000000000000000000026 /* IdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityStore.swift; sourceTree = "<group>"; };
 		200000000000000000000027 /* VoiceAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAgent.swift; sourceTree = "<group>"; };
+		200000000000000000000028 /* Paperwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paperwork.swift; sourceTree = "<group>"; };
+		200000000000000000000029 /* PaperworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperworkView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -133,6 +137,7 @@
 		400000000000000000000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000029 /* PaperworkView.swift */,
 				200000000000000000000024 /* QuakeAlertView.swift */,
 				200000000000000000000021 /* NeighborsView.swift */,
 				200000000000000000000020 /* ProfileView.swift */,
@@ -161,6 +166,7 @@
 		400000000000000000000006 /* BarrioMeshCore */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000028 /* Paperwork.swift */,
 				200000000000000000000025 /* MeshSecurity.swift */,
 				200000000000000000000022 /* SeismicDetector.swift */,
 				200000000000000000000019 /* ProfileInterpreter.swift */,
@@ -242,10 +248,10 @@
 			};
 			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "BarrioMesh" */;
 			compatibilityVersion = "Xcode 15.0";
-			developmentRegion = en;
+			developmentRegion = es;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				es,
 				Base,
 			);
 			mainGroup = 400000000000000000000001;
@@ -289,6 +295,8 @@
 				100000000000000000000013 /* OfflineAgent.swift in Sources */,
 				100000000000000000000014 /* AgentInterpreter.swift in Sources */,
 				100000000000000000000015 /* AskFaroView.swift in Sources */,
+				100000000000000000000029 /* PaperworkView.swift in Sources */,
+				100000000000000000000028 /* Paperwork.swift in Sources */,
 				100000000000000000000027 /* VoiceAgent.swift in Sources */,
 				100000000000000000000026 /* IdentityStore.swift in Sources */,
 				100000000000000000000025 /* MeshSecurity.swift in Sources */,

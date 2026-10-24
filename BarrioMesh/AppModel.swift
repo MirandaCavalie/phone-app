@@ -256,6 +256,16 @@ final class AppModel: ObservableObject {
         narrator.narrate(memory.log, country: profile.country)
     }
 
+    // MARK: - Paperwork
+
+    var callScript: Paperwork.CallScript {
+        Paperwork.callScript(profile: profile, state: meshState, selfID: deviceID, now: Date())
+    }
+
+    var incidentReport: Paperwork.Report {
+        Paperwork.report(profile: profile, memory: memory, state: meshState, selfID: deviceID, now: Date())
+    }
+
     // MARK: - Family
 
     var familyCheckIns: [SafetyCheckIn] {
