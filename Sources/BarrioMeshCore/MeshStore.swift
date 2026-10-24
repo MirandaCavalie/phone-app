@@ -202,11 +202,7 @@ public final class MeshStore: @unchecked Sendable {
         let seismicReports = state.seismicReports.filter { $0.detectedAt >= cutoff }
 
         let liveIDs = Set(posts.map(\.id)).union(messages.map(\.id)).union(checkIns.map(\.id)).union(seismicReports.map(\.id))
-        // Keep one signature per author even if their items expired, so their key stays pinned.
-        var pinnedAuthors = Set<String>()
-        let signatures = state.signatures.filter { signature in
-            liveIDs.contains(signature.itemID) || pinnedAuthors.insert(signature.authorID).inserted
-        }
+        let signatures = state.signatures.filter { liveIDs.contains($0.itemID) }
 
         return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports, signatures: signatures)
     }
