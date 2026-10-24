@@ -7,10 +7,13 @@ The product hypothesis is simple: during an outage, the useful network is the pe
 ## What is implemented
 
 - Native SwiftUI app for iOS 17+
+- Visible personal-agent interface for describing a situation in natural language
+- On-device Apple Foundation Models extraction on supported Apple Intelligence phones
+- Deterministic offline interpreter as a fallback on every supported iPhone
 - Direct encrypted sessions through `MultipeerConnectivity`
 - Automatic nearby discovery while the app is open
 - Offline JSON persistence on each phone
-- Need and offer categories: water, power, transportation, translation, and first aid
+- Need and offer categories: water, power, transportation, translation, medicine, and first aid
 - Deterministic local matching by resource, quantity, urgency, age, and approximate area
 - Two-sided approval before a match is confirmed
 - Two-sided completion before help is marked delivered
@@ -23,8 +26,10 @@ The product hypothesis is simple: during an outage, the useful network is the pe
 ## Architecture
 
 ```text
-SwiftUI views
+SwiftUI views ─── PersonalAgentInterpreter
      │
+     │             Apple on-device model (when available)
+     │             deterministic local fallback (always available)
      ▼
 AppModel ─────────────── PeerSession
      │                  MultipeerConnectivity
@@ -47,7 +52,7 @@ The shared state is intentionally small. Every phone stores immutable posts plus
 - Bluetooth and Wi-Fi enabled on both phones
 - Developer Mode enabled on both phones
 
-The mesh does not require the phones to have SIM cards or internet access after installation. Opening a prepared match in WhatsApp is optional and does require internet access.
+The agent and mesh do not require the phones to have SIM cards or internet access after installation. Opening a prepared match in WhatsApp is optional and does require internet access. Apple Intelligence improves free-text extraction on eligible devices; the local fallback keeps the same flow working on other iPhones.
 
 ## Install on two iPhones
 
@@ -68,13 +73,14 @@ A free Personal Team provisioning profile expires after seven days. Re-run the a
 2. Manually turn Bluetooth and Wi-Fi back on; do not connect them to an internet service.
 3. Open Barrio Mesh on both phones.
 4. Wait until each displays **1 teléfono conectado**.
-5. On phone A, publish an urgent need for one power charge in `Mission`.
-6. On phone B, publish an offer for three power charges in `Mission`.
-7. Open **Matches** on both phones. The same match should appear.
-8. Confirm on phone A. Phone B should show that one person has confirmed.
-9. Confirm on phone B. Both should show **Encuentro confirmado**.
-10. Optionally tap **Abrir en WhatsApp**, choose a contact, review the pre-filled summary, and send it. Nothing is sent automatically.
-11. Mark the help delivered on both phones to close the interaction.
+5. On phone A, open **Agente** and enter `Necesito una carga para mi teléfono en Mission, urgente`.
+6. Review the structured draft and publish it.
+7. On phone B, ask the agent `Tengo tres cargas para ofrecer en Mission`, review, and publish.
+8. Open **Matches** on both phones. The same match should appear.
+9. Confirm on phone A. Phone B should show that one person has confirmed.
+10. Confirm on phone B. Both should show **Encuentro confirmado**.
+11. Optionally tap **Abrir en WhatsApp**, choose a contact, review the pre-filled summary, and send it. Nothing is sent automatically.
+12. Mark the help delivered on both phones to close the interaction.
 
 If connectivity fails during a presentation, open **Red → Cargar un caso de prueba local**. This is explicitly labeled as fallback demo data and does not pretend a peer is connected.
 
@@ -87,7 +93,7 @@ swift build
 swift run CoreChecks
 ```
 
-`CoreChecks` verifies matching, convergent concurrent approvals, and disk persistence. XCTest versions of the same cases live in `Tests/BarrioMeshCoreTests` for wiring into an Xcode test target later.
+`CoreChecks` verifies agent parsing, matching, convergent concurrent approvals, and disk persistence. `swift test` runs the full suite, including privacy handling for possible street addresses and medicine requests.
 
 ## Deliberate limitations
 
@@ -96,6 +102,7 @@ swift run CoreChecks
 - **Hackathon trust model:** devices running the same protocol connect automatically. A production version needs visual pairing codes, signed identities, blocking, and abuse controls.
 - **No exact locations:** only user-entered approximate areas are exchanged.
 - **No medical triage:** “first aid” means requesting or offering a kit or trained person. The app does not diagnose or prioritize medical conditions.
+- **The agent is bounded:** it converts language into a reviewable draft and explains matches. It never publishes, approves, sends a WhatsApp message, or makes a medical decision without a person.
 - **Not an emergency service:** it complements, but never replaces, 911 or official alerts.
 - **No guaranteed delivery:** disconnected messages remain on the originating phone until another peer is encountered.
 - **WhatsApp is not part of the offline mesh:** the button uses WhatsApp's universal link to prepare a message. It needs internet and the user must choose a contact and confirm sending.
