@@ -15,6 +15,8 @@ jobs:
         run: swift test
       - name: Core checks
         run: swift run CoreChecks
+      - name: Neighborhood simulation (fails on over-commitment, forgery or divergence)
+        run: swift run -c release FaroSim
 
   ios:
     name: iOS simulator build
