@@ -36,6 +36,14 @@ final class AppModel: ObservableObject {
     let connectivity = ConnectivityMonitor()
     let seismometer = Seismometer()
     let identity = IdentityStore.loadOrCreate()
+    let narrator = Narrator()
+    @Published var speaksUpdates: Bool = UserDefaults.standard.object(forKey: "faro.speaks") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(speaksUpdates, forKey: "faro.speaks")
+            narrator.isEnabled = speaksUpdates
+            if !speaksUpdates { narrator.stop() }
+        }
+    }
     /// Items from peers dropped because their signature did not check out.
     @Published private(set) var rejectedItems = 0
 
@@ -244,6 +252,8 @@ final class AppModel: ObservableObject {
             memory = result.memory
             save(memory, to: Self.memoryURL)
         }
+        narrator.isEnabled = speaksUpdates && memory.emergencyActive
+        narrator.narrate(memory.log, country: profile.country)
     }
 
     // MARK: - Family

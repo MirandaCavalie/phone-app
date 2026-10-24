@@ -93,6 +93,7 @@ struct ProfileView: View {
                     Toggle("Ofrecer lo que nos sobra", isOn: $model.policy.autoPublishOffers)
                     Toggle("Aceptar ayuda de vecinos", isOn: $model.policy.autoAcceptIncomingHelp)
                     Stepper("Dar hasta \(model.policy.autoGiveLimit) sin preguntar", value: $model.policy.autoGiveLimit, in: 0...10)
+                    Toggle("Leer en voz alta lo importante en una emergencia", isOn: $model.speaksUpdates)
                 } header: {
                     Text("Lo que Faro puede hacer solo")
                 } footer: {
