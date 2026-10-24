@@ -35,7 +35,7 @@ final class AppModel: ObservableObject {
     let peerSession: PeerSession
     let connectivity = ConnectivityMonitor()
     let seismometer = Seismometer()
-    let identity = IdentityStore.loadOrCreate()
+    let identity: AgentIdentity
     let narrator = Narrator()
     @Published var speaksUpdates: Bool = UserDefaults.standard.object(forKey: "faro.speaks") as? Bool ?? true {
         didSet {
@@ -64,14 +64,10 @@ final class AppModel: ObservableObject {
     private var demoIdentities: [String: AgentIdentity] = [:]
 
     init() {
-        let defaults = UserDefaults.standard
-        if let existing = defaults.string(forKey: Self.deviceIDKey) {
-            deviceID = existing
-        } else {
-            let created = UUID().uuidString.lowercased()
-            defaults.set(created, forKey: Self.deviceIDKey)
-            deviceID = created
-        }
+        // The agent id is derived from the signing key, so nobody else can speak for this phone.
+        let identity = IdentityStore.loadOrCreate()
+        self.identity = identity
+        deviceID = identity.agentID
 
         encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -425,8 +421,10 @@ final class AppModel: ObservableObject {
     /// They are labeled "(simulado)" everywhere and never pretend a real peer is connected.
     func startSimulatedNeighbors() {
         guard demoNeighbors.isEmpty else { return }
+        let luisIdentity = AgentIdentity.deterministic(seed: "luis")
+        let familyIdentity = AgentIdentity.deterministic(seed: "family")
         let luis = PersonalAgent(
-            selfID: "demo-luis",
+            selfID: luisIdentity.agentID,
             profile: AgentProfile(
                 name: "Luis (simulado)",
                 country: profile.country,
@@ -447,10 +445,10 @@ final class AppModel: ObservableObject {
             familyCircleCode: profile.familyCircleCode
         )
         family.standingNeeds = []
-        let relative = PersonalAgent(selfID: "demo-family", profile: family, policy: AgentPolicy())
+        let relative = PersonalAgent(selfID: familyIdentity.agentID, profile: family, policy: AgentPolicy())
 
         let now = Date()
-        demoIdentities = [luis.selfID: AgentIdentity(), relative.selfID: AgentIdentity()]
+        demoIdentities = [luis.selfID: luisIdentity, relative.selfID: familyIdentity]
         demoNeighbors = [luis, relative].map { agent in
             var memory = agent.activateEmergency(memory: AgentMemory(), reason: "Simulación", now: now)
             // Simulated agents are not persisted; remember what they already published in an earlier run.
@@ -562,7 +560,6 @@ final class AppModel: ObservableObject {
         UUID(uuidString: String(format: "FA20DE30-0000-4000-8000-%012d", n))!
     }
 
-    private static let deviceIDKey = "barrio-mesh.device-id"
 
     private static var applicationSupportURL: URL {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
