@@ -126,6 +126,10 @@ Revisar cuando cambien:
 - MultipeerConnectivity
 - los esquemas de URL `sms:` y `wa.me`
 
-Cualquier cambio a `MeshPost`, `MatchProposal`, `AgentMessage`, `SafetyCheckIn` o `MeshState` debe subir `MeshWireMessage.currentProtocolVersion` y mantener la decodificación de datos viejos.
+Cualquier cambio a `MeshPost`, `MatchProposal`, `AgentMessage`, `SafetyCheckIn`, `SeismicReport` o `MeshState` debe subir `MeshWireMessage.currentProtocolVersion` y mantener la decodificación de datos viejos.
+
+Cambiar cualquier campo firmado rompe la verificación entre versiones. Después de un cambio así, correr `MeshSecurityTests` y `swift run -c release FaroSim`.
+
+Los archivos Swift nuevos se registran en el proyecto con `scripts/add_to_xcode.py`. El ícono se regenera con `swift scripts/make_icon.swift`.
 
 Antes de cada demo, la persona responsable (Miranda) corre `swift test` y `swift run CoreChecks`, instala en dos iPhones físicos y repite el guion.
