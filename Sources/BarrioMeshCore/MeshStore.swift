@@ -95,6 +95,7 @@ public final class MeshStore: @unchecked Sendable {
             changed = Self.union(&storedState.messages, with: incoming.messages) || changed
             changed = Self.union(&storedState.checkIns, with: incoming.checkIns) || changed
             changed = Self.union(&storedState.seismicReports, with: incoming.seismicReports) || changed
+            changed = Self.union(&storedState.signatures, with: incoming.signatures) || changed
 
             if changed { persistLocked() }
             return changed
@@ -123,6 +124,15 @@ public final class MeshStore: @unchecked Sendable {
     public func add(_ checkIn: SafetyCheckIn) -> Bool {
         lock.withLock {
             guard Self.union(&storedState.checkIns, with: [checkIn]) else { return false }
+            persistLocked()
+            return true
+        }
+    }
+
+    @discardableResult
+    public func add(_ signatures: [ItemSignature]) -> Bool {
+        lock.withLock {
+            guard Self.union(&storedState.signatures, with: signatures) else { return false }
             persistLocked()
             return true
         }
@@ -162,9 +172,9 @@ public final class MeshStore: @unchecked Sendable {
     @discardableResult
     public func compact(now: Date = Date(), retention: TimeInterval = MeshStore.defaultRetention) -> Bool {
         lock.withLock {
-            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count)
+            let before = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count)
             storedState = Self.compacted(storedState, now: now, retention: retention)
-            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count)
+            let after = (storedState.posts.count, storedState.proposals.count, storedState.messages.count, storedState.checkIns.count + storedState.seismicReports.count + storedState.signatures.count)
             guard before != after else { return false }
             persistLocked()
             return true
@@ -191,7 +201,14 @@ public final class MeshStore: @unchecked Sendable {
         let checkIns = state.checkIns.filter { newest["\($0.circleID)|\($0.authorID)"]?.id == $0.id }
         let seismicReports = state.seismicReports.filter { $0.detectedAt >= cutoff }
 
-        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports)
+        let liveIDs = Set(posts.map(\.id)).union(messages.map(\.id)).union(checkIns.map(\.id)).union(seismicReports.map(\.id))
+        // Keep one signature per author even if their items expired, so their key stays pinned.
+        var pinnedAuthors = Set<String>()
+        let signatures = state.signatures.filter { signature in
+            liveIDs.contains(signature.itemID) || pinnedAuthors.insert(signature.authorID).inserted
+        }
+
+        return MeshState(posts: posts, proposals: proposals, messages: messages, checkIns: checkIns, seismicReports: seismicReports, signatures: signatures)
     }
 
     static func isStale(_ post: MeshPost, cutoff: Date) -> Bool {

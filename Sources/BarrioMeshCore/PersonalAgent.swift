@@ -382,7 +382,7 @@ public struct PersonalAgent: Sendable {
             area: profile.homeArea,
             householdSafe: profile.household.count + 1,
             createdAt: now
-        )
+        ).sealed(withCircleCode: profile.familyCircleCode)
     }
 
     private func checkIn(result: inout AgentStepResult, now: Date) {
@@ -853,8 +853,7 @@ public struct PersonalAgent: Sendable {
     }
 
     private func noticeFamily(state: MeshState, result: inout AgentStepResult, now: Date) {
-        guard let circleID = profile.familyCircleID else { return }
-        for checkIn in state.latestCheckIns(circleID: circleID)
+        for checkIn in state.latestCheckIns(circleCode: profile.familyCircleCode)
         where checkIn.authorID != selfID && !result.memory.seenCheckIns.contains(checkIn.id) {
             result.memory.seenCheckIns.insert(checkIn.id)
             result.memory.record(ActivityEntry(

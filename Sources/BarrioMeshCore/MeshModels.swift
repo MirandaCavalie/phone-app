@@ -130,19 +130,22 @@ public struct MeshState: Codable, Equatable, Sendable {
     public var messages: [AgentMessage]
     public var checkIns: [SafetyCheckIn]
     public var seismicReports: [SeismicReport]
+    public var signatures: [ItemSignature]
 
     public init(
         posts: [MeshPost] = [],
         proposals: [MatchProposal] = [],
         messages: [AgentMessage] = [],
         checkIns: [SafetyCheckIn] = [],
-        seismicReports: [SeismicReport] = []
+        seismicReports: [SeismicReport] = [],
+        signatures: [ItemSignature] = []
     ) {
         self.posts = posts
         self.proposals = proposals
         self.messages = messages
         self.checkIns = checkIns
         self.seismicReports = seismicReports
+        self.signatures = signatures
     }
 
     public init(from decoder: Decoder) throws {
@@ -153,6 +156,7 @@ public struct MeshState: Codable, Equatable, Sendable {
         messages = try container.decodeIfPresent([AgentMessage].self, forKey: .messages) ?? []
         checkIns = try container.decodeIfPresent([SafetyCheckIn].self, forKey: .checkIns) ?? []
         seismicReports = try container.decodeIfPresent([SeismicReport].self, forKey: .seismicReports) ?? []
+        signatures = try container.decodeIfPresent([ItemSignature].self, forKey: .signatures) ?? []
     }
 
     public func messages(for proposalID: String) -> [AgentMessage] {
@@ -163,6 +167,12 @@ public struct MeshState: Codable, Equatable, Sendable {
 
     public func negotiation(for proposalID: String) -> Negotiation {
         Negotiation(messages: messages(for: proposalID))
+    }
+
+    /// The newest readable check-in of every person in the family that shares `code`.
+    public func latestCheckIns(circleCode code: String) -> [SafetyCheckIn] {
+        guard let circleID = FamilyCircle.identifier(for: code) else { return [] }
+        return latestCheckIns(circleID: circleID).compactMap { $0.opened(withCircleCode: code) }
     }
 
     /// The newest check-in of every person in a family circle.
@@ -282,6 +292,8 @@ public struct SafetyCheckIn: Codable, Identifiable, Hashable, Sendable {
     public let area: String
     public let householdSafe: Int
     public let createdAt: Date
+    /// ChaCha20-Poly1305 box with the private fields, when sealed for a family circle.
+    public let sealedPayload: Data?
 
     public init(
         id: UUID = UUID(),
@@ -291,7 +303,8 @@ public struct SafetyCheckIn: Codable, Identifiable, Hashable, Sendable {
         status: SafetyStatus,
         area: String,
         householdSafe: Int = 1,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        sealedPayload: Data? = nil
     ) {
         self.id = id
         self.authorID = authorID
@@ -301,11 +314,12 @@ public struct SafetyCheckIn: Codable, Identifiable, Hashable, Sendable {
         self.area = area
         self.householdSafe = max(0, householdSafe)
         self.createdAt = createdAt
+        self.sealedPayload = sealedPayload
     }
 }
 
 public struct MeshWireMessage: Codable, Sendable {
-    public static let currentProtocolVersion = 3
+    public static let currentProtocolVersion = 4
 
     public let protocolVersion: Int
     public let senderID: String
