@@ -23,6 +23,8 @@ public struct AgentMemory: Codable, Equatable, Sendable {
     public var lastConnectivity: Connectivity?
     /// Official event ids already handled, however many phones relayed them.
     public var seenHazards: Set<String>
+    /// When the agent last worked out where each relative probably is.
+    public var familyLocatedAt: Date?
 
     public init() {
         emergencyActive = false
@@ -38,6 +40,7 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         seenCheckIns = []
         lastConnectivity = nil
         seenHazards = []
+        familyLocatedAt = nil
     }
 
     public init(from decoder: Decoder) throws {
@@ -56,6 +59,7 @@ public struct AgentMemory: Codable, Equatable, Sendable {
         seenCheckIns = try c.decodeIfPresent(Set<UUID>.self, forKey: .seenCheckIns) ?? []
         lastConnectivity = try c.decodeIfPresent(Connectivity.self, forKey: .lastConnectivity)
         seenHazards = try c.decodeIfPresent(Set<String>.self, forKey: .seenHazards) ?? []
+        familyLocatedAt = try c.decodeIfPresent(Date.self, forKey: .familyLocatedAt)
     }
 
     public var unsentOutbox: [OutboxItem] { outbox.filter { $0.sentAt == nil } }
@@ -261,6 +265,7 @@ public struct PersonalAgent: Sendable {
         observeHazardAlerts(state.hazardAlerts, result: &result, now: now)
 
         if result.memory.emergencyActive {
+            locateFamily(result: &result, now: now)
             checkIn(result: &result, now: now)
             publishFromProfile(state: state, result: &result, now: now)
         }
@@ -424,6 +429,41 @@ public struct PersonalAgent: Sendable {
         }
     }
 
+    // MARK: - Family
+
+    /// Right after an emergency starts: where each relative probably is, from their routine,
+    /// and a message ready for the ones who do not live here.
+    private func locateFamily(result: inout AgentStepResult, now: Date) {
+        guard let started = result.memory.emergencyStartedAt,
+              result.memory.familyLocatedAt.map({ $0 < started }) ?? true,
+              !profile.household.isEmpty else { return }
+        result.memory.familyLocatedAt = now
+
+        for member in profile.household {
+            let location = FamilyLocator.likelyLocation(of: member, at: now, homeArea: profile.homeArea)
+            var detail = location.reason
+            if !location.meetingPoint.isEmpty { detail += t(" · punto de encuentro: \(location.meetingPoint)", " · meeting point: \(location.meetingPoint)") }
+            if !member.medical.isEmpty { detail += " · " + member.medical.summary }
+            result.memory.record(ActivityEntry(
+                date: now,
+                kind: .family,
+                title: t("\(member.name): probablemente en \(location.description)", "\(member.name): likely at \(location.description)"),
+                detail: detail
+            ))
+
+            guard !member.livesWithUser, !member.phone.isEmpty,
+                  !result.memory.outbox.contains(where: { $0.phone == member.phone && $0.sentAt == nil }) else { continue }
+            result.memory.outbox.append(OutboxItem(
+                channel: .sms,
+                recipientName: member.name,
+                phone: member.phone,
+                body: t("\(member.name), ¿estás bien? Yo estoy bien en \(profile.homeArea). Si puedes, ve a \(location.meetingPoint.isEmpty ? "un lugar seguro" : location.meetingPoint) y avísame.",
+                        "\(member.name), are you OK? I'm OK in \(profile.homeArea). If you can, go to \(location.meetingPoint.isEmpty ? "a safe place" : location.meetingPoint) and let me know."),
+                createdAt: now
+            ))
+        }
+    }
+
     // MARK: - Check-in
 
     private func makeCheckIn(status: SafetyStatus, now: Date) -> SafetyCheckIn? {
@@ -434,7 +474,7 @@ public struct PersonalAgent: Sendable {
             circleID: circleID,
             status: status,
             area: profile.homeArea,
-            householdSafe: profile.household.count + 1,
+            householdSafe: profile.housemates.count + 1,
             createdAt: now
         ).sealed(withCircleCode: profile.familyCircleCode)
     }
@@ -519,8 +559,8 @@ public struct PersonalAgent: Sendable {
         }
 
         let explicitNeeds = Set(profile.standingNeeds.map(\.resource))
-        for member in profile.household {
-            for resource in member.dependsOn where !explicitNeeds.contains(resource) {
+        for member in profile.housemates {
+            for resource in member.effectiveNeeds where !explicitNeeds.contains(resource) {
                 let covered = profile.supplies.contains(where: { $0.resource == resource && $0.quantity > 0 })
                 guard !covered else { continue }
                 items.append(ProfileItem(

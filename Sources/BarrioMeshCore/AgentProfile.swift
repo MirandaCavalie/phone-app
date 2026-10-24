@@ -44,6 +44,9 @@ public struct AgentProfile: Codable, Equatable, Sendable {
             && !homeArea.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// People who live in the same home as the user (relatives elsewhere are in `household` too).
+    public var housemates: [HouseholdMember] { household.filter(\.livesWithUser) }
+
     public var familyCircleID: String? {
         FamilyCircle.identifier(for: familyCircleCode)
     }
@@ -113,12 +116,58 @@ public struct HouseholdMember: Codable, Equatable, Identifiable, Sendable {
     public var relation: String
     /// Resources this person depends on (e.g. medicine for insulin, power for oxygen).
     public var dependsOn: [ResourceKind]
+    /// False for relatives in the family circle who live elsewhere (a son at university).
+    public var livesWithUser: Bool
+    public var phone: String
+    public var medical: MedicalCard
+    public var routine: [RoutineBlock]
 
-    public init(id: UUID = UUID(), name: String, relation: String, dependsOn: [ResourceKind] = []) {
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        relation: String,
+        dependsOn: [ResourceKind] = [],
+        livesWithUser: Bool = true,
+        phone: String = "",
+        medical: MedicalCard = MedicalCard(),
+        routine: [RoutineBlock] = []
+    ) {
         self.id = id
         self.name = name
         self.relation = relation
         self.dependsOn = dependsOn
+        self.livesWithUser = livesWithUser
+        self.phone = phone.filter(\.isNumber)
+        self.medical = medical
+        self.routine = routine
+    }
+
+    public init(from decoder: Decoder) throws {
+        // Profiles saved before medical cards and routines existed keep loading.
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        relation = try c.decode(String.self, forKey: .relation)
+        dependsOn = try c.decodeIfPresent([ResourceKind].self, forKey: .dependsOn) ?? []
+        livesWithUser = try c.decodeIfPresent(Bool.self, forKey: .livesWithUser) ?? true
+        phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
+        medical = try c.decodeIfPresent(MedicalCard.self, forKey: .medical) ?? MedicalCard()
+        routine = try c.decodeIfPresent([RoutineBlock].self, forKey: .routine) ?? []
+    }
+
+    /// Resources this person needs, including what their medical card implies
+    /// (refrigerated medication needs power during an outage).
+    public var effectiveNeeds: [ResourceKind] {
+        var needs = dependsOn
+        if !medical.medications.isEmpty, !needs.contains(.medicine) { needs.append(.medicine) }
+        if medical.medications.contains(where: \.needsRefrigeration) || medical.usesPoweredDevice, !needs.contains(.power) {
+            needs.append(.power)
+        }
+        return needs
+    }
+
+    public var isVulnerable: Bool {
+        !effectiveNeeds.isEmpty || medical.mobility != .independent || (medical.age.map { $0 >= 70 || $0 <= 5 } ?? false)
     }
 }
 
@@ -190,7 +239,7 @@ enum Preparedness {
     static func evaluate(_ profile: AgentProfile) -> PreparednessReport {
         var score = 0
         var gaps: [String] = []
-        let people = max(1, profile.household.count + 1)
+        let people = max(1, profile.housemates.count + 1)
 
         let water = profile.supplies.first(where: { $0.resource == .water })?.quantity ?? 0
         // Rough guide: about 4 liters (≈ 6 small bottles) per person per day, for 3 days.
@@ -226,9 +275,17 @@ enum Preparedness {
             gaps.append(t("Sin contacto de familia.", "No family contact."))
         }
 
-        let dependents = profile.household.filter { !$0.dependsOn.isEmpty }
+        for member in profile.household {
+            for medication in member.medical.medications {
+                if let days = medication.supplyDays, days <= 3 {
+                    gaps.append(t("\(medication.name) de \(member.name): quedan \(days) días.", "\(member.name)'s \(medication.name): \(days) days left."))
+                }
+            }
+        }
+
+        let dependents = profile.housemates.filter { !$0.effectiveNeeds.isEmpty }
         let uncovered = dependents.filter { member in
-            member.dependsOn.contains { resource in
+            member.effectiveNeeds.contains { resource in
                 !profile.supplies.contains(where: { $0.resource == resource && $0.quantity > 0 })
             }
         }
@@ -236,7 +293,7 @@ enum Preparedness {
             score += 10
         } else {
             for member in uncovered {
-                let names = member.dependsOn.map(\.displayName).joined(separator: ", ").lowercased()
+                let names = member.effectiveNeeds.map(\.displayName).joined(separator: ", ").lowercased()
                 gaps.append(t("\(member.name) depende de \(names): ten reserva.", "\(member.name) relies on \(names): keep a reserve."))
             }
         }

@@ -38,12 +38,23 @@ public enum Paperwork {
         if profile.meetingPoint.isEmpty == false {
             lines.append(t("Un punto de referencia cercano es \(profile.meetingPoint).", "A nearby landmark is \(profile.meetingPoint)."))
         }
-        let people = profile.household.count + 1
+        let people = profile.housemates.count + 1
         lines.append(people == 1 ? t("Estoy solo en casa.", "I am alone at home.") : t("Somos \(people) personas en el hogar.", "There are \(people) people in my household."))
 
-        for member in profile.household where !member.dependsOn.isEmpty {
-            let needs = member.dependsOn.map(\.displayName).joined(separator: t(" y ", " and ")).lowercased()
-            lines.append(t("Mi \(member.relation), \(member.name), depende de \(needs).", "My \(member.relation), \(member.name), relies on \(needs)."))
+        for member in profile.housemates where member.isVulnerable {
+            let needs = member.effectiveNeeds.map(\.displayName).joined(separator: t(" y ", " and ")).lowercased()
+            if !needs.isEmpty {
+                lines.append(t("Mi \(member.relation), \(member.name), depende de \(needs).", "My \(member.relation), \(member.name), relies on \(needs)."))
+            }
+            if !member.medical.isEmpty {
+                lines.append("\(member.name): \(member.medical.summary).")
+            }
+        }
+        for member in profile.household where !member.livesWithUser || !member.routine.isEmpty {
+            let location = FamilyLocator.likelyLocation(of: member, at: now, homeArea: profile.homeArea)
+            if location.place != t("Casa", "Home") {
+                lines.append(t("\(member.name) probablemente está en \(location.description).", "\(member.name) is probably at \(location.description)."))
+            }
         }
 
         let missing = unmetNeeds(profile: profile, state: state, selfID: selfID, now: now)
@@ -66,12 +77,28 @@ public enum Paperwork {
         ]))
 
         var household = ["\(profile.name) (\(t("quien reporta", "reporter")))"]
-        household += profile.household.map { member in
-            member.dependsOn.isEmpty
+        household += profile.housemates.map { member in
+            member.effectiveNeeds.isEmpty
                 ? "\(member.name), \(member.relation)"
-                : "\(member.name), \(member.relation) — \(t("depende de", "relies on")) \(member.dependsOn.map(\.displayName).joined(separator: t(" y ", " and ")).lowercased())"
+                : "\(member.name), \(member.relation) — \(t("depende de", "relies on")) \(member.effectiveNeeds.map(\.displayName).joined(separator: t(" y ", " and ")).lowercased())"
         }
         sections.append(.init(title: t("Hogar (\(household.count) personas)", "Household (\(household.count) people)"), rows: household))
+
+        let cards = profile.household.filter { !$0.medical.isEmpty }.map { member -> String in
+            var line = "\(member.name): \(member.medical.summary)"
+            if !member.medical.doctor.isEmpty { line += t(" · médico: \(member.medical.doctor)", " · doctor: \(member.medical.doctor)") }
+            return line
+        }
+        if !cards.isEmpty {
+            sections.append(.init(title: t("Fichas médicas", "Medical cards"), rows: cards))
+        }
+        let whereabouts = profile.household.filter { !$0.livesWithUser || !$0.routine.isEmpty }.map { member -> String in
+            let location = FamilyLocator.likelyLocation(of: member, at: memory.emergencyStartedAt ?? now, homeArea: profile.homeArea)
+            return "\(member.name): \(location.description) — \(location.reason)"
+        }
+        if !whereabouts.isEmpty {
+            sections.append(.init(title: t("Dónde estaba cada familiar", "Where each relative was"), rows: whereabouts))
+        }
 
         var event: [String] = []
         if let started = memory.emergencyStartedAt {
